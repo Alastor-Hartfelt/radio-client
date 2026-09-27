@@ -43,9 +43,19 @@
 	var cores = nav.hardwareConcurrency || 8;
 	var lowEnd = forced || isChromeOS || mem <= 4 || cores <= 4;
 
-	var DEF_CFG = { seeded: false, chromebook: lowEnd, scale: 1, hidpi: !lowEnd, dynamic: false, targetFps: 50, meshWorkers: 0, chunkCap: lowEnd };
+	// Crash protection. If the last start crashed, or two starts in a row never
+	// reached the title screen, boot without any Rise packs or engine tweaks.
+	var BOOT_KEY = 'rise.boot';
+	var boot = readJSON(BOOT_KEY) || { fails: 0 };
+	var safeMode = /[?&]safe\b/.test(location.search) || !!boot.crashed || (boot.pending && boot.fails >= 1);
+	if (readJSON('rise.safe')) safeMode = true;
+	if (safeMode && !/[?&]safe\b/.test(location.search)) writeJSON('rise.safe', true);
+	var nextFails = boot.pending ? (boot.fails || 0) + 1 : 0;
+	writeJSON(BOOT_KEY, { pending: true, fails: nextFails, at: Date.now(), safe: safeMode });
+	var DEF_CFG = { seeded: false, chromebook: lowEnd, scale: 1, hidpi: !lowEnd, dynamic: false, targetFps: 50, meshWorkers: 0, chunkCap: false };
 	var cfg = readJSON(CFG_KEY) || {};
 	for (var k in DEF_CFG) if (!(k in cfg)) cfg[k] = DEF_CFG[k];
+	if ((cfg._v || 0) < 4) { cfg.chunkCap = false; cfg._v = 4; writeJSON(CFG_KEY, cfg); } // debug flag: off by default now
 	function saveCfg() { writeJSON(CFG_KEY, cfg); }
 
 	var DEF_MODS = {
@@ -105,7 +115,7 @@
 
 	var PRESETS = {
 		chromebook: {
-			renderDistance: '4', simulationDistance: '4', maxFps: '60', particles: '2', ao: 'false',
+			renderDistance: '3', simulationDistance: '3', maxFps: '60', particles: '2', ao: 'false',
 			biomeBlendRadius: '0', entityDistanceScaling: '0.5', entityShadows: 'false', cutoutLeaves: 'false',
 			improvedTransparency: 'false', mipmapLevels: '0', textureFiltering: '0', renderClouds: '"false"',
 			weatherRadius: '3', vignette: 'false', chunkSectionFadeInTime: '0.0', menuBackgroundBlurriness: '0',
@@ -195,9 +205,9 @@
 
 	// ------------------------------------------------------------ pre-boot
 	var opts = window.eaglercraftXOpts;
-	if (opts) {
+	if (opts && !safeMode) {
 		if (cfg.meshWorkers > 0) opts.meshWorkerCount = cfg.meshWorkers;
-		else if (cfg.chromebook && cores <= 4) opts.meshWorkerCount = 1;
+		else if (cfg.chromebook && cores <= 4) opts.meshWorkerCount = cores <= 2 ? 1 : 2; // 2 builds chunks faster on 4 cores
 		if (cfg.chunkCap) { opts.chunkUnloadHardCap = true; window.__eaglerChunkUnloadHardCap = true; }
 	}
 	var optionsPass = Promise.race([
@@ -218,7 +228,7 @@
 			values.hideLightningFlashes = mods.noLightning ? 'true' : 'false';
 			Object.assign(values, ALWAYS);
 			var want = [];
-			try { want = await installPacks(); } catch (e) { console.warn('[Rise] packs', e); }
+			if (!safeMode) { try { want = await installPacks(); } catch (e) { console.warn('[Rise] packs', e); } }
 			await patchOptions(values, function (o) { editPackList(o, want); });
 			try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
 		})(),
@@ -405,10 +415,48 @@
 	// buttons centre their label: textX = x + (w - textWidth) / 2, textY = y + 6
 	function btnRect(f, w) { return { x: f.x - Math.floor((w - (f.w + 1)) / 2), y: f.y - 6, w: w, h: 20 }; }
 	function setScreen(name, rects, level) {
+		if (name) markBootOk();
 		screen.name = name; screen.rects = rects || {};
 		screen.level = level == null ? 1 : Math.min(1, level * 1.04);
 		placeOverlays();
 	}
+	// a start counts as good once a real menu (or the world) shows up
+	var bootOk = false;
+	function markBootOk() {
+		if (bootOk) return;
+		bootOk = true;
+		writeJSON(BOOT_KEY, { pending: false, fails: 0, at: Date.now() });
+		if (safeMode) setTimeout(function () { toast('Safe Mode: Rise skins and texture mods are off after a crash. Mods > Misc > Leave Safe Mode'); }, 1500);
+	}
+	var crashSeen = false;
+	function onGameCrash(panel) {
+		if (crashSeen) return;
+		crashSeen = true;
+		writeJSON(BOOT_KEY, { pending: false, fails: 0, crashed: true, at: Date.now() });
+		var bar = document.createElement('div');
+		bar.style.cssText = 'position:fixed;z-index:2147483647;right:16px;bottom:16px;display:flex;gap:10px;font:bold 15px system-ui,sans-serif';
+		var mk = function (label, fn) {
+			var b = document.createElement('button');
+			b.textContent = label;
+			b.style.cssText = 'padding:12px 18px;border:2px solid #40f0dc;background:#06345c;color:#fff;cursor:pointer;border-radius:4px';
+			b.onclick = fn; bar.appendChild(b); return b;
+		};
+		mk('Restart in Safe Mode', function () { writeJSON('rise.safe', true); location.reload(); });
+		var cp = mk('Copy crash report', function () {
+			var rep = readJSON('eaglercraft26.lastCrashReport.v2');
+			var text = (rep && rep.report) || (panel && panel.innerText) || 'no report';
+			text = 'Rise ' + VERSION + ' | mods: ' + JSON.stringify(mods) + ' | cfg: ' + JSON.stringify(cfg) + '\n\n' + text;
+			(navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { cp.textContent = 'Copied!'; }, function () {
+				var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); cp.textContent = 'Copied!'; } catch (e) {} ta.remove();
+			});
+		});
+		document.body.appendChild(bar);
+	}
+	new MutationObserver(function () {
+		var c = document.querySelector('._eaglercraftX_crash_element');
+		if (c) onGameCrash(c);
+	}).observe(document.documentElement, { childList: true, subtree: true });
+
 	var lastVanilla = 0;
 	function vanillaVideoOpened() {
 		// fallback: the game's own Video Settings opened anyway (keyboard navigation)
@@ -801,6 +849,11 @@
 				modBool('noFovFx', 'No FOV Change', 'The view does not zoom in and out when you sprint or get speed.', { restart: true }),
 				modBool('noWobble', 'No Screen Wobble', 'Removes the nausea and portal wobble effects.', { restart: true }),
 				modBool('noLightning', 'No Lightning Flash', 'Lightning no longer flashes the whole sky white.', { restart: true })
+			] },
+			{ name: 'SAFE MODE', items: [
+				cmdRow('Safe Mode', 'If Rise ever crashes, the next start boots in Safe Mode: skins, texture mods and engine tweaks are switched off so the game always loads. You can also add ?safe to the link.', [
+					['Leave Safe Mode', function () { try { localStorage.removeItem('rise.safe'); } catch (e) {} writeJSON(BOOT_KEY, { pending: false, fails: 0 }); toast('Restarting with mods on…'); setTimeout(function () { location.href = location.href.replace(/[?&]safe\b/, ''); }, 400); }],
+					['Enter Safe Mode', function () { writeJSON('rise.safe', true); toast('Restarting in Safe Mode…'); setTimeout(function () { location.reload(); }, 400); }]])
 			] },
 			{ name: 'ABOUT', items: [{ type: 'about', label: 'Rise Client ' + VERSION, desc: 'Eaglercraft 26.2 by o_xer, based on EaglercraftX 1.8 by lax1dude. Minecraft is (c) Mojang.' }] }
 		] },
@@ -1386,7 +1439,7 @@
 		if (!document.pointerLockElement && zooming) zooming = false;
 		applyFrameEffects(); updateHud();
 		pendingCheck = true; boostUntil = performance.now() + 2500;
-		if (document.pointerLockElement) { runCommands(); runChords(); }
+		if (document.pointerLockElement) { runCommands(); runChords(); markBootOk(); }
 	});
 	// our own handlers (inside the shadow root) run first; stop events at the host
 	['keydown', 'keyup', 'keypress', 'mousedown', 'mouseup', 'click', 'dblclick', 'wheel', 'contextmenu', 'pointerdown', 'pointerup', 'pointermove', 'mousemove', 'touchstart', 'touchmove', 'touchend'].forEach(function (t) {
@@ -1394,6 +1447,6 @@
 	});
 
 	applyMods();
-	window.rise = { version: VERSION, open: openPanel, close: closePanel, config: cfg, mods: mods, lowEnd: lowEnd, screen: screen, fps: function () { return Math.round(fps); }, queueCommands: queueCommands };
+	window.rise = { safeMode: safeMode, version: VERSION, open: openPanel, close: closePanel, config: cfg, mods: mods, lowEnd: lowEnd, screen: screen, fps: function () { return Math.round(fps); }, queueCommands: queueCommands };
 	console.log('[Rise] Rise Client ' + VERSION + (lowEnd ? ' (Chromebook mode)' : ''));
 })();

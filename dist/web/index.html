@@ -6,7 +6,7 @@
  */
 (function () {
 	'use strict';
-	var V = '297e2c3664f5';
+	var V = '167ba016ac78';
 	var IDS = ["eag-inline-wasm-br", "eag-inline-mesh-wasm-br", "eag-inline-server-wasm-br", "eag-inline-assets", "eag-inline-sounds"];
 	var CACHE = 'rise-payload-' + V;
 	var total = 55929748, done = 0;
@@ -271,7 +271,7 @@ vNCw0YbQuNGP0JjQvdGE0L7RgNC80LDRhtC40Y/QoNC10YHQv9GD0LHQu9C40LrQuNC60L7Qu9C40YfQ
   ], { type: "text/javascript" }));
   var serverAssetNode = document.getElementById("eag-inline-assets");
   window.__eaglerWasmServerWorkerBootstrapURL = URL.createObjectURL(new Blob([
-    "self.__riseAssetURL=" + JSON.stringify(new URL("payload/eag-inline-assets.bin?v=297e2c3664f5", location.href).href) + ";\n",
+    "self.__riseAssetURL=" + JSON.stringify(new URL("payload/eag-inline-assets.bin?v=167ba016ac78", location.href).href) + ";\n",
     "(function () {\n  \"use strict\";\n  var originalFetch = self.fetch.bind(self);\n  var OriginalXHR = self.XMLHttpRequest;\n  var encoded = `",
     "",
     "`;\n  var assetBuffer = null;\n  function decodeAsset() {\n    if (assetBuffer) return assetBuffer;\n    if (self.__riseAssetURL) { var rx = new OriginalXHR(); rx.open('GET', self.__riseAssetURL, false); rx.responseType = 'arraybuffer'; rx.send(); if (rx.status !== 200) throw new Error('Rise: asset download failed ' + rx.status); assetBuffer = rx.response; encoded = ''; return assetBuffer; }\n    var size = 6197091;\n    var out = new Uint8Array(size);\n    var offset = 0;\n    var start = 0;\n    while (start < encoded.length) {\n      while (start < encoded.length && encoded.charCodeAt(start) <= 32) ++start;\n      if (start >= encoded.length) break;\n      var end = encoded.indexOf(\"\\n\", start);\n      if (end < 0) end = encoded.length;\n      while (end > start && encoded.charCodeAt(end - 1) <= 32) --end;\n      var binary = atob(encoded.slice(start, end));\n      for (var i = 0; i < binary.length; ++i) out[offset + i] = binary.charCodeAt(i);\n      offset += binary.length;\n      start = end + 1;\n    }\n    encoded = \"\";\n    if (offset !== size) throw new Error(\"inline server asset size mismatch\");\n    assetBuffer = out.buffer;\n    return assetBuffer;\n  }\n  self.fetch = function (input, init) {\n    var url = typeof input === \"string\" ? input : (input && input.url) || String(input);\n    if (url.indexOf(\"eagler-inline-payload://assets.epk\") !== 0) {\n      return originalFetch(input, init);\n    }\n    return Promise.resolve(new Response(decodeAsset(), {\n      status: 200,\n      headers: { \"Content-Type\": \"application/octet-stream\" }\n    }));\n  };\n  self.XMLHttpRequest = function () {\n    var delegate = null;\n    var listeners = Object.create(null);\n    var inline = false;\n    var url = \"\";\n    this.status = 0;\n    this.response = null;\n    this.responseType = \"\";\n    this.addEventListener = function (type, listener) {\n      listeners[type] = listener;\n      if (delegate) delegate.addEventListener(type, listener);\n    };\n    this.open = function (method, nextURL, async) {\n      url = String(nextURL);\n      inline = url.indexOf(\"eagler-inline-payload://assets.epk\") === 0;\n      if (!inline) {\n        delegate = new OriginalXHR();\n        delegate.responseType = this.responseType;\n        for (var type in listeners) delegate.addEventListener(type, listeners[type]);\n        delegate.open(method, nextURL, async);\n      }\n    };\n    this.send = function (body) {\n      if (!inline) {\n        delegate.responseType = this.responseType;\n        delegate.send(body);\n        return;\n      }\n      var selfXHR = this;\n      setTimeout(function () {\n        try {\n          selfXHR.status = 200;\n          selfXHR.response = decodeAsset();\n          if (listeners.load) listeners.load.call(selfXHR, { target: selfXHR });\n        } catch (ex) {\n          if (listeners.error) listeners.error.call(selfXHR, { target: selfXHR, error: ex });\n        }\n      }, 0);\n    };\n  };\n})();\n",
@@ -921,9 +921,19 @@ var TeaVM=TeaVM||{};TeaVM.wasmGC=TeaVM.wasmGC||(()=>{let n=new Map;let e=null;le
 	var cores = nav.hardwareConcurrency || 8;
 	var lowEnd = forced || isChromeOS || mem <= 4 || cores <= 4;
 
-	var DEF_CFG = { seeded: false, chromebook: lowEnd, scale: 1, hidpi: !lowEnd, dynamic: false, targetFps: 50, meshWorkers: 0, chunkCap: lowEnd };
+	// Crash protection. If the last start crashed, or two starts in a row never
+	// reached the title screen, boot without any Rise packs or engine tweaks.
+	var BOOT_KEY = 'rise.boot';
+	var boot = readJSON(BOOT_KEY) || { fails: 0 };
+	var safeMode = /[?&]safe\b/.test(location.search) || !!boot.crashed || (boot.pending && boot.fails >= 1);
+	if (readJSON('rise.safe')) safeMode = true;
+	if (safeMode && !/[?&]safe\b/.test(location.search)) writeJSON('rise.safe', true);
+	var nextFails = boot.pending ? (boot.fails || 0) + 1 : 0;
+	writeJSON(BOOT_KEY, { pending: true, fails: nextFails, at: Date.now(), safe: safeMode });
+	var DEF_CFG = { seeded: false, chromebook: lowEnd, scale: 1, hidpi: !lowEnd, dynamic: false, targetFps: 50, meshWorkers: 0, chunkCap: false };
 	var cfg = readJSON(CFG_KEY) || {};
 	for (var k in DEF_CFG) if (!(k in cfg)) cfg[k] = DEF_CFG[k];
+	if ((cfg._v || 0) < 4) { cfg.chunkCap = false; cfg._v = 4; writeJSON(CFG_KEY, cfg); } // debug flag: off by default now
 	function saveCfg() { writeJSON(CFG_KEY, cfg); }
 
 	var DEF_MODS = {
@@ -983,7 +993,7 @@ var TeaVM=TeaVM||{};TeaVM.wasmGC=TeaVM.wasmGC||(()=>{let n=new Map;let e=null;le
 
 	var PRESETS = {
 		chromebook: {
-			renderDistance: '4', simulationDistance: '4', maxFps: '60', particles: '2', ao: 'false',
+			renderDistance: '3', simulationDistance: '3', maxFps: '60', particles: '2', ao: 'false',
 			biomeBlendRadius: '0', entityDistanceScaling: '0.5', entityShadows: 'false', cutoutLeaves: 'false',
 			improvedTransparency: 'false', mipmapLevels: '0', textureFiltering: '0', renderClouds: '"false"',
 			weatherRadius: '3', vignette: 'false', chunkSectionFadeInTime: '0.0', menuBackgroundBlurriness: '0',
@@ -1073,9 +1083,9 @@ var TeaVM=TeaVM||{};TeaVM.wasmGC=TeaVM.wasmGC||(()=>{let n=new Map;let e=null;le
 
 	// ------------------------------------------------------------ pre-boot
 	var opts = window.eaglercraftXOpts;
-	if (opts) {
+	if (opts && !safeMode) {
 		if (cfg.meshWorkers > 0) opts.meshWorkerCount = cfg.meshWorkers;
-		else if (cfg.chromebook && cores <= 4) opts.meshWorkerCount = 1;
+		else if (cfg.chromebook && cores <= 4) opts.meshWorkerCount = cores <= 2 ? 1 : 2; // 2 builds chunks faster on 4 cores
 		if (cfg.chunkCap) { opts.chunkUnloadHardCap = true; window.__eaglerChunkUnloadHardCap = true; }
 	}
 	var optionsPass = Promise.race([
@@ -1096,7 +1106,7 @@ var TeaVM=TeaVM||{};TeaVM.wasmGC=TeaVM.wasmGC||(()=>{let n=new Map;let e=null;le
 			values.hideLightningFlashes = mods.noLightning ? 'true' : 'false';
 			Object.assign(values, ALWAYS);
 			var want = [];
-			try { want = await installPacks(); } catch (e) { console.warn('[Rise] packs', e); }
+			if (!safeMode) { try { want = await installPacks(); } catch (e) { console.warn('[Rise] packs', e); } }
 			await patchOptions(values, function (o) { editPackList(o, want); });
 			try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
 		})(),
@@ -1283,10 +1293,48 @@ var TeaVM=TeaVM||{};TeaVM.wasmGC=TeaVM.wasmGC||(()=>{let n=new Map;let e=null;le
 	// buttons centre their label: textX = x + (w - textWidth) / 2, textY = y + 6
 	function btnRect(f, w) { return { x: f.x - Math.floor((w - (f.w + 1)) / 2), y: f.y - 6, w: w, h: 20 }; }
 	function setScreen(name, rects, level) {
+		if (name) markBootOk();
 		screen.name = name; screen.rects = rects || {};
 		screen.level = level == null ? 1 : Math.min(1, level * 1.04);
 		placeOverlays();
 	}
+	// a start counts as good once a real menu (or the world) shows up
+	var bootOk = false;
+	function markBootOk() {
+		if (bootOk) return;
+		bootOk = true;
+		writeJSON(BOOT_KEY, { pending: false, fails: 0, at: Date.now() });
+		if (safeMode) setTimeout(function () { toast('Safe Mode: Rise skins and texture mods are off after a crash. Mods > Misc > Leave Safe Mode'); }, 1500);
+	}
+	var crashSeen = false;
+	function onGameCrash(panel) {
+		if (crashSeen) return;
+		crashSeen = true;
+		writeJSON(BOOT_KEY, { pending: false, fails: 0, crashed: true, at: Date.now() });
+		var bar = document.createElement('div');
+		bar.style.cssText = 'position:fixed;z-index:2147483647;right:16px;bottom:16px;display:flex;gap:10px;font:bold 15px system-ui,sans-serif';
+		var mk = function (label, fn) {
+			var b = document.createElement('button');
+			b.textContent = label;
+			b.style.cssText = 'padding:12px 18px;border:2px solid #40f0dc;background:#06345c;color:#fff;cursor:pointer;border-radius:4px';
+			b.onclick = fn; bar.appendChild(b); return b;
+		};
+		mk('Restart in Safe Mode', function () { writeJSON('rise.safe', true); location.reload(); });
+		var cp = mk('Copy crash report', function () {
+			var rep = readJSON('eaglercraft26.lastCrashReport.v2');
+			var text = (rep && rep.report) || (panel && panel.innerText) || 'no report';
+			text = 'Rise ' + VERSION + ' | mods: ' + JSON.stringify(mods) + ' | cfg: ' + JSON.stringify(cfg) + '\n\n' + text;
+			(navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { cp.textContent = 'Copied!'; }, function () {
+				var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); cp.textContent = 'Copied!'; } catch (e) {} ta.remove();
+			});
+		});
+		document.body.appendChild(bar);
+	}
+	new MutationObserver(function () {
+		var c = document.querySelector('._eaglercraftX_crash_element');
+		if (c) onGameCrash(c);
+	}).observe(document.documentElement, { childList: true, subtree: true });
+
 	var lastVanilla = 0;
 	function vanillaVideoOpened() {
 		// fallback: the game's own Video Settings opened anyway (keyboard navigation)
@@ -1679,6 +1727,11 @@ var TeaVM=TeaVM||{};TeaVM.wasmGC=TeaVM.wasmGC||(()=>{let n=new Map;let e=null;le
 				modBool('noFovFx', 'No FOV Change', 'The view does not zoom in and out when you sprint or get speed.', { restart: true }),
 				modBool('noWobble', 'No Screen Wobble', 'Removes the nausea and portal wobble effects.', { restart: true }),
 				modBool('noLightning', 'No Lightning Flash', 'Lightning no longer flashes the whole sky white.', { restart: true })
+			] },
+			{ name: 'SAFE MODE', items: [
+				cmdRow('Safe Mode', 'If Rise ever crashes, the next start boots in Safe Mode: skins, texture mods and engine tweaks are switched off so the game always loads. You can also add ?safe to the link.', [
+					['Leave Safe Mode', function () { try { localStorage.removeItem('rise.safe'); } catch (e) {} writeJSON(BOOT_KEY, { pending: false, fails: 0 }); toast('Restarting with mods on…'); setTimeout(function () { location.href = location.href.replace(/[?&]safe\b/, ''); }, 400); }],
+					['Enter Safe Mode', function () { writeJSON('rise.safe', true); toast('Restarting in Safe Mode…'); setTimeout(function () { location.reload(); }, 400); }]])
 			] },
 			{ name: 'ABOUT', items: [{ type: 'about', label: 'Rise Client ' + VERSION, desc: 'Eaglercraft 26.2 by o_xer, based on EaglercraftX 1.8 by lax1dude. Minecraft is (c) Mojang.' }] }
 		] },
@@ -2264,7 +2317,7 @@ var TeaVM=TeaVM||{};TeaVM.wasmGC=TeaVM.wasmGC||(()=>{let n=new Map;let e=null;le
 		if (!document.pointerLockElement && zooming) zooming = false;
 		applyFrameEffects(); updateHud();
 		pendingCheck = true; boostUntil = performance.now() + 2500;
-		if (document.pointerLockElement) { runCommands(); runChords(); }
+		if (document.pointerLockElement) { runCommands(); runChords(); markBootOk(); }
 	});
 	// our own handlers (inside the shadow root) run first; stop events at the host
 	['keydown', 'keyup', 'keypress', 'mousedown', 'mouseup', 'click', 'dblclick', 'wheel', 'contextmenu', 'pointerdown', 'pointerup', 'pointermove', 'mousemove', 'touchstart', 'touchmove', 'touchend'].forEach(function (t) {
@@ -2272,7 +2325,7 @@ var TeaVM=TeaVM||{};TeaVM.wasmGC=TeaVM.wasmGC||(()=>{let n=new Map;let e=null;le
 	});
 
 	applyMods();
-	window.rise = { version: VERSION, open: openPanel, close: closePanel, config: cfg, mods: mods, lowEnd: lowEnd, screen: screen, fps: function () { return Math.round(fps); }, queueCommands: queueCommands };
+	window.rise = { safeMode: safeMode, version: VERSION, open: openPanel, close: closePanel, config: cfg, mods: mods, lowEnd: lowEnd, screen: screen, fps: function () { return Math.round(fps); }, queueCommands: queueCommands };
 	console.log('[Rise] Rise Client ' + VERSION + (lowEnd ? ' (Chromebook mode)' : ''));
 })();
 
