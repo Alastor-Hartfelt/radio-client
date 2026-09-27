@@ -165,33 +165,50 @@
 			r.onerror = function () { rej(r.error); };
 		});
 	}
+	// Everything that is switched on is merged into ONE pack. The game checks every
+	// one of its ~22,000 resources against every enabled pack while loading, so 30
+	// separate little packs made startup crawl for minutes; one pack costs ~nothing.
+	var ACTIVE = 'rise_active';
 	async function installPacks() {
 		var want = wantedPacks();
-		var stamp = 'rise.packs.' + VERSION;
-		var have = readJSON(stamp) || [];
-		var missing = want.filter(function (p) { return have.indexOf(p) < 0; });
-		if (missing.length) {
-			var db = await openFS();
-			await new Promise(function (res, rej) {
-				var tx = db.transaction('filesystem', 'readwrite');
-				var st = tx.objectStore('filesystem');
-				var dirs = { 'resourcepacks': 1 };
-				missing.forEach(function (pid) {
-					var files = PACKS[pid];
-					Object.keys(files).forEach(function (rel) {
-						var path = 'resourcepacks/' + pid + '/' + rel;
-						var parts = path.split('/');
-						for (var i = 1; i < parts.length; i++) dirs[parts.slice(0, i).join('/')] = 1;
-						st.put({ path: path, data: b64ToBytes(files[rel]).buffer });
-					});
-				});
-				Object.keys(dirs).forEach(function (d) { st.put({ path: d + '/.eaglerfsdir', data: new ArrayBuffer(0) }); });
-				tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
-			});
-			db.close();
-			writeJSON(stamp, have.concat(missing));
+		var stampKey = 'rise.packs.active';
+		var stamp = VERSION + '|' + want.join(',');
+		if (!want.length) {
+			if (readJSON(stampKey) !== stamp) { await clearRisePacks(); writeJSON(stampKey, stamp); }
+			return [];
 		}
-		return want;
+		if (readJSON(stampKey) === stamp) return [ACTIVE];
+		var merged = {};
+		want.forEach(function (pid) { var f = PACKS[pid]; for (var rel in f) merged[rel] = f[rel]; }); // later packs win
+		merged['pack.mcmeta'] = btoa(JSON.stringify({ pack: { description: 'Rise Client mods & skins', min_format: 88, max_format: 88, pack_format: 88 } }));
+		await clearRisePacks();
+		var db = await openFS();
+		await new Promise(function (res, rej) {
+			var tx = db.transaction('filesystem', 'readwrite');
+			var st = tx.objectStore('filesystem');
+			var dirs = { 'resourcepacks': 1 };
+			Object.keys(merged).forEach(function (rel) {
+				var path = 'resourcepacks/' + ACTIVE + '/' + rel;
+				var parts = path.split('/');
+				for (var i = 1; i < parts.length; i++) dirs[parts.slice(0, i).join('/')] = 1;
+				st.put({ path: path, data: b64ToBytes(merged[rel]).buffer });
+			});
+			Object.keys(dirs).forEach(function (d) { st.put({ path: d + '/.eaglerfsdir', data: new ArrayBuffer(0) }); });
+			tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+		});
+		db.close();
+		writeJSON(stampKey, stamp);
+		return [ACTIVE];
+	}
+	// removes every Rise pack folder (old one-pack-per-mod folders included)
+	async function clearRisePacks() {
+		var db = await openFS();
+		await new Promise(function (res, rej) {
+			var tx = db.transaction('filesystem', 'readwrite');
+			tx.objectStore('filesystem')['delete'](IDBKeyRange.bound(['resourcepacks/rise_'], ['resourcepacks/rise_￿']));
+			tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+		});
+		db.close();
 	}
 	function editPackList(o, want) {
 		var cur = [];
@@ -924,7 +941,7 @@
 		if (stagedMods.crosshair !== undefined && packStamp().indexOf('rise_crosshair') < 0 && stagedMods.crosshair) return true;
 		return false;
 	}
-	function packStamp() { return readJSON('rise.packs.' + VERSION) || []; }
+	function packStamp() { var s = readJSON('rise.packs.active') || ''; return (s.split('|')[1] || '').split(','); }
 	function commit(restart) {
 		for (var r in stagedRise) cfg[r] = stagedRise[r];
 		for (var m in stagedMods) mods[m] = stagedMods[m];

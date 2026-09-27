@@ -6,7 +6,7 @@
  */
 (function () {
 	'use strict';
-	var V = '167ba016ac78';
+	var V = '35712bdea84b';
 	var IDS = ["eag-inline-wasm-br", "eag-inline-mesh-wasm-br", "eag-inline-server-wasm-br", "eag-inline-assets", "eag-inline-sounds"];
 	var CACHE = 'rise-payload-' + V;
 	var total = 55929748, done = 0;
@@ -271,7 +271,7 @@ vNCw0YbQuNGP0JjQvdGE0L7RgNC80LDRhtC40Y/QoNC10YHQv9GD0LHQu9C40LrQuNC60L7Qu9C40YfQ
   ], { type: "text/javascript" }));
   var serverAssetNode = document.getElementById("eag-inline-assets");
   window.__eaglerWasmServerWorkerBootstrapURL = URL.createObjectURL(new Blob([
-    "self.__riseAssetURL=" + JSON.stringify(new URL("payload/eag-inline-assets.bin?v=167ba016ac78", location.href).href) + ";\n",
+    "self.__riseAssetURL=" + JSON.stringify(new URL("payload/eag-inline-assets.bin?v=35712bdea84b", location.href).href) + ";\n",
     "(function () {\n  \"use strict\";\n  var originalFetch = self.fetch.bind(self);\n  var OriginalXHR = self.XMLHttpRequest;\n  var encoded = `",
     "",
     "`;\n  var assetBuffer = null;\n  function decodeAsset() {\n    if (assetBuffer) return assetBuffer;\n    if (self.__riseAssetURL) { var rx = new OriginalXHR(); rx.open('GET', self.__riseAssetURL, false); rx.responseType = 'arraybuffer'; rx.send(); if (rx.status !== 200) throw new Error('Rise: asset download failed ' + rx.status); assetBuffer = rx.response; encoded = ''; return assetBuffer; }\n    var size = 6197091;\n    var out = new Uint8Array(size);\n    var offset = 0;\n    var start = 0;\n    while (start < encoded.length) {\n      while (start < encoded.length && encoded.charCodeAt(start) <= 32) ++start;\n      if (start >= encoded.length) break;\n      var end = encoded.indexOf(\"\\n\", start);\n      if (end < 0) end = encoded.length;\n      while (end > start && encoded.charCodeAt(end - 1) <= 32) --end;\n      var binary = atob(encoded.slice(start, end));\n      for (var i = 0; i < binary.length; ++i) out[offset + i] = binary.charCodeAt(i);\n      offset += binary.length;\n      start = end + 1;\n    }\n    encoded = \"\";\n    if (offset !== size) throw new Error(\"inline server asset size mismatch\");\n    assetBuffer = out.buffer;\n    return assetBuffer;\n  }\n  self.fetch = function (input, init) {\n    var url = typeof input === \"string\" ? input : (input && input.url) || String(input);\n    if (url.indexOf(\"eagler-inline-payload://assets.epk\") !== 0) {\n      return originalFetch(input, init);\n    }\n    return Promise.resolve(new Response(decodeAsset(), {\n      status: 200,\n      headers: { \"Content-Type\": \"application/octet-stream\" }\n    }));\n  };\n  self.XMLHttpRequest = function () {\n    var delegate = null;\n    var listeners = Object.create(null);\n    var inline = false;\n    var url = \"\";\n    this.status = 0;\n    this.response = null;\n    this.responseType = \"\";\n    this.addEventListener = function (type, listener) {\n      listeners[type] = listener;\n      if (delegate) delegate.addEventListener(type, listener);\n    };\n    this.open = function (method, nextURL, async) {\n      url = String(nextURL);\n      inline = url.indexOf(\"eagler-inline-payload://assets.epk\") === 0;\n      if (!inline) {\n        delegate = new OriginalXHR();\n        delegate.responseType = this.responseType;\n        for (var type in listeners) delegate.addEventListener(type, listeners[type]);\n        delegate.open(method, nextURL, async);\n      }\n    };\n    this.send = function (body) {\n      if (!inline) {\n        delegate.responseType = this.responseType;\n        delegate.send(body);\n        return;\n      }\n      var selfXHR = this;\n      setTimeout(function () {\n        try {\n          selfXHR.status = 200;\n          selfXHR.response = decodeAsset();\n          if (listeners.load) listeners.load.call(selfXHR, { target: selfXHR });\n        } catch (ex) {\n          if (listeners.error) listeners.error.call(selfXHR, { target: selfXHR, error: ex });\n        }\n      }, 0);\n    };\n  };\n})();\n",
@@ -1043,33 +1043,50 @@ var TeaVM=TeaVM||{};TeaVM.wasmGC=TeaVM.wasmGC||(()=>{let n=new Map;let e=null;le
 			r.onerror = function () { rej(r.error); };
 		});
 	}
+	// Everything that is switched on is merged into ONE pack. The game checks every
+	// one of its ~22,000 resources against every enabled pack while loading, so 30
+	// separate little packs made startup crawl for minutes; one pack costs ~nothing.
+	var ACTIVE = 'rise_active';
 	async function installPacks() {
 		var want = wantedPacks();
-		var stamp = 'rise.packs.' + VERSION;
-		var have = readJSON(stamp) || [];
-		var missing = want.filter(function (p) { return have.indexOf(p) < 0; });
-		if (missing.length) {
-			var db = await openFS();
-			await new Promise(function (res, rej) {
-				var tx = db.transaction('filesystem', 'readwrite');
-				var st = tx.objectStore('filesystem');
-				var dirs = { 'resourcepacks': 1 };
-				missing.forEach(function (pid) {
-					var files = PACKS[pid];
-					Object.keys(files).forEach(function (rel) {
-						var path = 'resourcepacks/' + pid + '/' + rel;
-						var parts = path.split('/');
-						for (var i = 1; i < parts.length; i++) dirs[parts.slice(0, i).join('/')] = 1;
-						st.put({ path: path, data: b64ToBytes(files[rel]).buffer });
-					});
-				});
-				Object.keys(dirs).forEach(function (d) { st.put({ path: d + '/.eaglerfsdir', data: new ArrayBuffer(0) }); });
-				tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
-			});
-			db.close();
-			writeJSON(stamp, have.concat(missing));
+		var stampKey = 'rise.packs.active';
+		var stamp = VERSION + '|' + want.join(',');
+		if (!want.length) {
+			if (readJSON(stampKey) !== stamp) { await clearRisePacks(); writeJSON(stampKey, stamp); }
+			return [];
 		}
-		return want;
+		if (readJSON(stampKey) === stamp) return [ACTIVE];
+		var merged = {};
+		want.forEach(function (pid) { var f = PACKS[pid]; for (var rel in f) merged[rel] = f[rel]; }); // later packs win
+		merged['pack.mcmeta'] = btoa(JSON.stringify({ pack: { description: 'Rise Client mods & skins', min_format: 88, max_format: 88, pack_format: 88 } }));
+		await clearRisePacks();
+		var db = await openFS();
+		await new Promise(function (res, rej) {
+			var tx = db.transaction('filesystem', 'readwrite');
+			var st = tx.objectStore('filesystem');
+			var dirs = { 'resourcepacks': 1 };
+			Object.keys(merged).forEach(function (rel) {
+				var path = 'resourcepacks/' + ACTIVE + '/' + rel;
+				var parts = path.split('/');
+				for (var i = 1; i < parts.length; i++) dirs[parts.slice(0, i).join('/')] = 1;
+				st.put({ path: path, data: b64ToBytes(merged[rel]).buffer });
+			});
+			Object.keys(dirs).forEach(function (d) { st.put({ path: d + '/.eaglerfsdir', data: new ArrayBuffer(0) }); });
+			tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+		});
+		db.close();
+		writeJSON(stampKey, stamp);
+		return [ACTIVE];
+	}
+	// removes every Rise pack folder (old one-pack-per-mod folders included)
+	async function clearRisePacks() {
+		var db = await openFS();
+		await new Promise(function (res, rej) {
+			var tx = db.transaction('filesystem', 'readwrite');
+			tx.objectStore('filesystem')['delete'](IDBKeyRange.bound(['resourcepacks/rise_'], ['resourcepacks/rise_￿']));
+			tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+		});
+		db.close();
 	}
 	function editPackList(o, want) {
 		var cur = [];
@@ -1802,7 +1819,7 @@ var TeaVM=TeaVM||{};TeaVM.wasmGC=TeaVM.wasmGC||(()=>{let n=new Map;let e=null;le
 		if (stagedMods.crosshair !== undefined && packStamp().indexOf('rise_crosshair') < 0 && stagedMods.crosshair) return true;
 		return false;
 	}
-	function packStamp() { return readJSON('rise.packs.' + VERSION) || []; }
+	function packStamp() { var s = readJSON('rise.packs.active') || ''; return (s.split('|')[1] || '').split(','); }
 	function commit(restart) {
 		for (var r in stagedRise) cfg[r] = stagedRise[r];
 		for (var m in stagedMods) mods[m] = stagedMods[m];
