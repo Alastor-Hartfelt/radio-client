@@ -49,7 +49,6 @@
 	var boot = readJSON(BOOT_KEY) || { fails: 0 };
 	var safeMode = /[?&]safe\b/.test(location.search) || !!boot.crashed || (boot.pending && boot.fails >= 1);
 	if (readJSON('rise.safe')) safeMode = true;
-	if (safeMode && !/[?&]safe\b/.test(location.search)) writeJSON('rise.safe', true);
 	var nextFails = boot.pending ? (boot.fails || 0) + 1 : 0;
 	writeJSON(BOOT_KEY, { pending: true, fails: nextFails, at: Date.now(), safe: safeMode });
 	var DEF_CFG = { seeded: false, chromebook: lowEnd, scale: 1, hidpi: !lowEnd, dynamic: false, targetFps: 50, meshWorkers: 0, chunkCap: false };
@@ -443,7 +442,7 @@
 		if (bootOk) return;
 		bootOk = true;
 		writeJSON(BOOT_KEY, { pending: false, fails: 0, at: Date.now() });
-		if (safeMode) setTimeout(function () { toast('Safe Mode: Rise skins and texture mods are off after a crash. Mods > Misc > Leave Safe Mode'); }, 1500);
+		try { localStorage.removeItem('rise.safe'); } catch (e) {} // mods come back by themselves next start
 	}
 	var crashSeen = false;
 	function onGameCrash(panel) {
@@ -866,11 +865,6 @@
 				modBool('noFovFx', 'No FOV Change', 'The view does not zoom in and out when you sprint or get speed.', { restart: true }),
 				modBool('noWobble', 'No Screen Wobble', 'Removes the nausea and portal wobble effects.', { restart: true }),
 				modBool('noLightning', 'No Lightning Flash', 'Lightning no longer flashes the whole sky white.', { restart: true })
-			] },
-			{ name: 'SAFE MODE', items: [
-				cmdRow('Safe Mode', 'If Rise ever crashes, the next start boots in Safe Mode: skins, texture mods and engine tweaks are switched off so the game always loads. You can also add ?safe to the link.', [
-					['Leave Safe Mode', function () { try { localStorage.removeItem('rise.safe'); } catch (e) {} writeJSON(BOOT_KEY, { pending: false, fails: 0 }); toast('Restarting with mods on…'); setTimeout(function () { location.href = location.href.replace(/[?&]safe\b/, ''); }, 400); }],
-					['Enter Safe Mode', function () { writeJSON('rise.safe', true); toast('Restarting in Safe Mode…'); setTimeout(function () { location.reload(); }, 400); }]])
 			] },
 			{ name: 'ABOUT', items: [{ type: 'about', label: 'Rise Client ' + VERSION, desc: 'Eaglercraft 26.2 by o_xer, based on EaglercraftX 1.8 by lax1dude. Minecraft is (c) Mojang.' }] }
 		] },

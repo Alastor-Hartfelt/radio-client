@@ -55,6 +55,21 @@
 		return fromCache;
 	}
 
+	// One link, always current: if the site has a newer build than this (browser-
+	// cached) page, refresh the cached page and reload once.
+	(function () {
+		try {
+			if (sessionStorage.getItem('rise.updated') === V) return;
+			fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (latest) {
+				latest = latest.trim();
+				if (latest && latest !== V && sessionStorage.getItem('rise.updated') !== latest) {
+					sessionStorage.setItem('rise.updated', latest);
+					fetch(location.href, { cache: 'reload' }).then(function () { location.reload(); }, function () { location.reload(); });
+				}
+			}).catch(function () {});
+		} catch (e) {}
+	})();
+
 	window.__riseBinReady = (async function () {
 		var cache = await openCache();
 		var hits = await Promise.all(IDS.map(function (id) { return load(id, cache); }));
