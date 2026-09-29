@@ -63,7 +63,8 @@
 		lowFire: false, clearWater: false, noPumpkin: false, entityCull: false, clearLag: false,
 		crosshairSize: 1, fullbrightStrength: 'medium', fpsCorner: 'left', clearLagMinutes: 3, cullDistance: 0.5,
 		skins: {}, shader: false, shaderStyle: 'vibrant', glowOres: false, glint: false, glintColor: 'turquoise', cleanGlass: false,
-		noHurtTilt: false, noFovFx: false, noWobble: false, noLightning: false
+		noHurtTilt: false, noFovFx: false, noWobble: false, noLightning: false,
+		batterySaver: true, batteryCap: lowEnd ? 30 : 0
 	};
 	var mods = readJSON(MODS_KEY) || {};
 	for (var mk in DEF_MODS) if (!(mk in mods)) mods[mk] = DEF_MODS[mk];
@@ -118,7 +119,7 @@
 			biomeBlendRadius: '0', entityDistanceScaling: '0.5', entityShadows: 'false', cutoutLeaves: 'false',
 			improvedTransparency: 'false', mipmapLevels: '0', textureFiltering: '0', renderClouds: '"false"',
 			weatherRadius: '3', vignette: 'false', chunkSectionFadeInTime: '0.0', menuBackgroundBlurriness: '0',
-			prioritizeChunkUpdates: '0', syncChunkWrites: 'false', graphicsPreset: '"custom"'
+			prioritizeChunkUpdates: '0', syncChunkWrites: 'false', graphicsPreset: '"custom"', inactivityFpsLimit: '"afk"'
 		},
 		balanced: {
 			renderDistance: '6', simulationDistance: '5', maxFps: '120', particles: '1', ao: 'true',
@@ -233,6 +234,7 @@
 				Object.assign(values, cfg.chromebook ? PRESETS.chromebook : PRESETS.balanced);
 				cfg.seeded = true; saveCfg();
 			}
+			if ((cfg._v || 0) < 5) { values.inactivityFpsLimit = '"afk"'; cfg._v = 5; saveCfg(); } // battery: slow down when idle
 			var pending = readJSON(PENDING_KEY);
 			if (pending) Object.assign(values, pending);
 			values.toggleSprint = mods.toggleSprint ? 'true' : 'false';
@@ -269,6 +271,41 @@
 		// Eagler's own layout breaks if the ratio lies before its canvas exists.
 		if (gameReady() && document.querySelector('canvas')) { armed = true; applyScale(); boostUntil = performance.now() + 15000; return; }
 		setTimeout(waitCanvas, 250);
+	})();
+
+	// ------------------------------------------------------------ battery saver: frame cap on the game's own frame timer
+	// The game draws from requestAnimationFrame (it keeps the reference it sees at
+	// start-up, so this wrapper has to be installed before the game boots). Menus
+	// don't need 60 fps, and on battery the world is capped lower.
+	var onBattery = false;
+	try { navigator.getBattery().then(function (b) { var u = function () { onBattery = !b.charging; }; u(); b.addEventListener('chargingchange', u); }); } catch (e) {}
+	function frameCap() {
+		if (!mods.batterySaver || safeMode || !bootOk) return 0;
+		if (document.pointerLockElement) return onBattery ? mods.batteryCap : 0;
+		// only calm menus: loading screens stay uncapped so worlds load at full speed
+		return (isOpen || screen.name === 'title' || screen.name === 'options' || screen.name === 'pause') ? 30 : 0;
+	}
+	(function () {
+		var oRaf = window.requestAnimationFrame, oCancel = window.cancelAnimationFrame;
+		if (!oRaf) return;
+		var lastT = 0, ids = {}, nextId = 1, rafStats = window.__riseRaf = { frames: 0, calls: 0, cap: frameCap };
+		window.requestAnimationFrame = function (cb) {
+			var id = nextId++;
+			rafStats.calls++;
+			var tick = function (t) {
+				var cap = frameCap();
+				if (cap && cap < 60 && t - lastT < 1000 / cap - 4) { ids[id] = oRaf.call(window, tick); return; }
+				delete ids[id];
+				lastT = t;
+				rafStats.frames++;
+				cb(t);
+			};
+			ids[id] = oRaf.call(window, tick);
+			return id;
+		};
+		window.cancelAnimationFrame = function (id) {
+			if (ids[id] != null) { oCancel.call(window, ids[id]); delete ids[id]; }
+		};
 	})();
 
 	// ------------------------------------------------------------ frame hook: FPS + reading the finished frame
@@ -835,6 +872,8 @@
 		] },
 		{ id: 'lag', name: 'Lag', groups: [
 			{ name: 'YOUR COMPUTER', items: [
+				modBool('batterySaver', 'Battery Saver', 'Menus run at 30 fps, and while your laptop is unplugged the game is capped lower so the battery lasts longer. Plugged in, the game runs at your normal Max Framerate.', { opts: [
+					opt('batteryCap', 'Unplugged Cap', [[30, '30 fps'], [0, 'No cap']], 'Highest framerate in the world while running on battery.')] }),
 				modBool('entityCull', 'Entity Culling', 'Far-away mobs and items are not drawn, and entity shadows are off. (The game already skips entities behind you; ones behind walls still draw, that part is inside the engine.) Takes a restart.', { restart: true, opts: [
 					opt('cullDistance', 'Draw Distance', [[0.25, 'Short'], [0.5, 'Medium'], [0.75, 'Long']], 'How far away entities are still drawn.', { restart: true })] })
 			] },

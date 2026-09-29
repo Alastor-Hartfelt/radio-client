@@ -25,6 +25,11 @@ browser, Wasm-GC). The base game is o_xer's Eaglercraft 26.2 port; Rise adds:
     totems, ender pearls and food (steak dinner, cereal, ramen, pizza...)
 - **Chromebook Mode** (auto on ChromeOS or <=4GB RAM / <=4 cores; force it with
   `?chromebook`) and render / dynamic resolution.
+- **Fast starts**: the game code is unpacked once and kept ready in the browser
+  cache (no brotli unpack + cold compile every launch), the world thread reads its
+  files from memory, and Unifont is trimmed to Latin/Greek/Cyrillic + symbols.
+- **Battery Saver** (Lag tab, on by default): menus run at 30 fps, and in-game is
+  capped at 30 fps while a Chromebook is unplugged. Idle AFK frame drop is on.
 - **Fast world start**: 1562 recipe-unlock advancements are replaced by one that
   unlocks every recipe on the first tick (server start 8.0s -> 6.6s in testing).
 

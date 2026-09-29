@@ -41,19 +41,53 @@
 		return out;
 	}
 
+	// The game's code (.wasm, 160 MB unpacked) ships brotli-packed. Unpacking it and
+	// compiling it from scratch on every start was most of the start time on a
+	// Chromebook, so the unpacked files are kept in the cache and handed to the
+	// browser as real .wasm responses (Chrome also keeps its compiled machine code
+	// for those, so later starts skip most of the compile work and save battery).
+	var WASM = { 'classes.wasm': 'eag-inline-wasm-br', 'mesh-worker.wasm': 'eag-inline-mesh-wasm-br', 'server-worker.wasm': 'eag-inline-server-wasm-br' };
+	var BR = {}; for (var wn in WASM) BR[WASM[wn]] = wn;
+	var SIZES = %SIZES%;
+	var cacheP = null;
+	function wasmKey(name) { return new URL('wasm/' + name + '?v=' + V, location.href).href; }
+
+	async function fetchBin(id) {
+		var resp = await fetch('payload/' + id + '.bin?v=' + V);
+		if (!resp.ok) throw new Error('Rise payload ' + id + ': HTTP ' + resp.status);
+		return resp;
+	}
 	async function load(id, cache) {
+		if (BR[id] && cache && await cache.match(wasmKey(BR[id]))) { done += SIZES[id] || 0; return true; }
 		var url = 'payload/' + id + '.bin?v=' + V;
-		var resp = cache ? await cache.match(url) : null;
+		var resp = !BR[id] && cache ? await cache.match(url) : null;
 		var fromCache = !!resp;
-		if (!resp) {
-			resp = await fetch(url);
-			if (!resp.ok) throw new Error('Rise payload ' + id + ': HTTP ' + resp.status);
-		}
-		var put = !fromCache && cache ? cache.put(url, resp.clone()).catch(function () {}) : null;
-		window.__riseBin[id] = await readWithProgress(resp);
+		if (!resp) resp = await fetchBin(id);
+		var put = !fromCache && !BR[id] && cache ? cache.put(url, resp.clone()).catch(function () {}) : null;
+		var bytes = window.__riseBin[id] = await readWithProgress(resp);
+		// the world thread's copy of the assets: a blob in memory, not a network request
+		if (id === 'eag-inline-assets') window.__riseAssetBlobURL = URL.createObjectURL(new Blob([bytes]));
 		if (put) await put;
 		return fromCache;
 	}
+
+	window.__riseWasm = function (name, unpack) {
+		if (!WASM[name]) return null;
+		return (async function () {
+			var cache = await cacheP;
+			var hit = cache ? await cache.match(wasmKey(name)) : null;
+			if (hit) return hit;
+			var id = WASM[name];
+			if (!window.__riseBin[id]) window.__riseBin[id] = new Uint8Array(await (await fetchBin(id)).arrayBuffer()); // cache was cleared under us
+			var resp = await unpack();
+			if (cache) {
+				var raw = await resp.arrayBuffer();
+				resp = new Response(raw, { status: 200, headers: { 'Content-Type': 'application/wasm' } });
+				try { await cache.put(wasmKey(name), new Response(raw, { status: 200, headers: { 'Content-Type': 'application/wasm' } })); } catch (e) {}
+			}
+			return resp;
+		})();
+	};
 
 	// One link, always current: if the site has a newer build than this (browser-
 	// cached) page, refresh the cached page and reload once.
@@ -71,7 +105,8 @@
 	})();
 
 	window.__riseBinReady = (async function () {
-		var cache = await openCache();
+		cacheP = openCache();
+		var cache = await cacheP;
 		var hits = await Promise.all(IDS.map(function (id) { return load(id, cache); }));
 		status(hits.every(Boolean) ? 'Starting Rise Client (cached)…' : 'Starting Rise Client…');
 	})();

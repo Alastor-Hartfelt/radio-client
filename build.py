@@ -37,6 +37,26 @@ LANG = {
     'credits_and_attribution.button.credits': 'Mods',
 }
 FAST_START = True  # swap 1562 recipe-unlock advancements for one that unlocks everything
+# Unifont covers every script (7.7 MB of hex) and the game parses it twice on each
+# start (default + uniform fonts). Keep Latin/Greek/Cyrillic, punctuation, symbols,
+# arrows, box drawing and full-width forms; other scripts show as boxes.
+UNIFONT_KEEP = [(0x0000, 0x0600), (0x1D00, 0x2C00), (0x2C60, 0x2C80), (0xA720, 0xA800),
+                (0xFB00, 0xFB50), (0xFE00, 0xFE70), (0xFF00, 0x10000)]
+
+
+def trim_unifont(zbytes):
+    import io, zipfile
+    src = zipfile.ZipFile(io.BytesIO(zbytes))
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as dst:
+        for info in src.infolist():
+            data = src.read(info)
+            if info.filename.endswith('.hex'):
+                keep = [line for line in data.decode('ascii').splitlines()
+                        if any(a <= int(line.split(':', 1)[0], 16) < b for a, b in UNIFONT_KEEP)]
+                data = ('\n'.join(keep) + '\n').encode('ascii')
+            dst.writestr(info.filename, data)
+    return out.getvalue()
 
 
 def patch_assets(epk_bytes):
@@ -54,6 +74,9 @@ def patch_assets(epk_bytes):
             continue
         if t == 'FILE' and n in theme:
             d = theme[n]; seen.add(n)
+        if t == 'FILE' and n == 'assets/minecraft/font/unifont.zip':
+            before = len(d); d = trim_unifont(d)
+            print('unifont: %.1f MB -> %.2f MB' % (before / 1e6, len(d) / 1e6))
         if t == 'FILE' and n == 'assets/minecraft/lang/en_us.json':
             lang = json.loads(d)
             lang.update(LANG)
@@ -139,14 +162,29 @@ def main():
 # ---------------------------------------------------------------- web build
 WEB = os.path.join(ROOT, 'dist', 'web')
 
+WASM_FETCH = r'''  (function () {
+    var pf = window.fetch;
+    window.fetch = function (input, init) {
+      var url = typeof input === "string" ? input : (input && input.url) || String(input);
+      var clean = url.split("?")[0].split("#")[0].split("/").pop();
+      var rw = window.__riseWasm && window.__riseWasm(clean, function () { return pf(input, init); });
+      return rw || pf(input, init);
+    };
+  })();
+'''
+WORKER_ASSETS = ('\t\t\t\t\tif (window.__riseAssetBlobURL && typeof window.__eaglerWasmServerWorkerBootstrapURL === "string") {'
+                 ' try { const rob = await (await fetch(window.__eaglerWasmServerWorkerBootstrapURL)).blob();'
+                 ' window.__eaglerWasmServerWorkerBootstrapURL = URL.createObjectURL(new Blob(["self.__riseAssetURL=" + JSON.stringify(window.__riseAssetBlobURL) + ";\\n", rob], { type: "text/javascript" }));'
+                 ' } catch (e) { window.__log.push("W:[Rise] worker asset blob: " + e); } }\n')
+
 
 def make_web(html, version):
     """Split the payload <script> nodes into payload/<id>.bin files."""
-    import hashlib, shutil
+    import hashlib, shutil, json
     if os.path.isdir(os.path.join(WEB, 'payload')):
         shutil.rmtree(os.path.join(WEB, 'payload'))
     os.makedirs(os.path.join(WEB, 'payload'))
-    ids, total = [], 0
+    ids, total, sizes = [], 0, {}
     pat = re.compile(r'(<script type="application/octet-stream" id="([^"]+)" data-size="(\d+)">)(.*?)(</script>)', re.S)
 
     def repl(m):
@@ -157,7 +195,7 @@ def make_web(html, version):
         data = base64.b64decode(re.sub(r'\s', '', m.group(4)))
         assert len(data) == int(m.group(3)), pid
         open(os.path.join(WEB, 'payload', pid + '.bin'), 'wb').write(data)
-        ids.append(pid); total += len(data)
+        ids.append(pid); total += len(data); sizes[pid] = len(data)
         return m.group(1) + m.group(5)
     html = pat.sub(repl, html)
 
@@ -168,17 +206,25 @@ def make_web(html, version):
     a = '  function decodePayloadAsync(id) {\n'
     assert html.count(a) == 1
     html = html.replace(a, a + '    if (window.__riseBin && window.__riseBin[id]) { var ra = window.__riseBin[id]; delete window.__riseBin[id]; return Promise.resolve(ra.buffer); }\n')
+    # the three .wasm images come from Rise's cache, ready to compile (see web-loader.js)
+    a = '  window.__eagReleaseInlineWasm = function () {'
+    assert html.count(a) == 1
+    html = html.replace(a, WASM_FETCH + a)
+    # the world thread reads its assets from a blob in memory instead of the network
+    a = '\t\t\t\t\twindow.__eaglerWasmRuntimeURL = null;\n'
+    assert html.count(a) == 1
+    html = html.replace(a, a + WORKER_ASSETS)
     # the server worker gets assets by (cached) sync XHR instead of an embedded base64 copy
     a = 'window.__eaglerWasmServerWorkerBootstrapURL = URL.createObjectURL(new Blob([\n'
     assert html.count(a) == 1
-    html = html.replace(a, a + '    "self.__riseAssetURL=" + JSON.stringify(new URL("payload/eag-inline-assets.bin?v=%s", location.href).href) + ";\\n",\n' % version)
+    html = html.replace(a, a + '    "self.__riseAssetURL=self.__riseAssetURL||" + JSON.stringify(new URL("payload/eag-inline-assets.bin?v=%s", location.href).href) + ";\\n",\n' % version)
     html = html.replace('serverAssetNode ? serverAssetNode.textContent : ""', '""', 1)
     a = 'if (assetBuffer) return assetBuffer;\\n'
     assert html.count(a) == 1
     html = html.replace(a, a + "    if (self.__riseAssetURL) { var rx = new OriginalXHR(); rx.open('GET', self.__riseAssetURL, false); rx.responseType = 'arraybuffer'; rx.send(); if (rx.status !== 200) throw new Error('Rise: asset download failed ' + rx.status); assetBuffer = rx.response; encoded = ''; return assetBuffer; }\\n")
 
     loader = open(os.path.join(ROOT, 'src', 'web-loader.js'), encoding='utf-8').read()
-    loader = loader.replace('%VERSION%', version).replace('%IDS%', repr(ids).replace("'", '"')).replace('%TOTAL%', str(total))
+    loader = loader.replace('%VERSION%', version).replace('%IDS%', repr(ids).replace("'", '"')).replace('%TOTAL%', str(total)).replace('%SIZES%', json.dumps(sizes))
     head = '<head>'
     i = html.index(head) + len(head)
     html = html[:i] + '<script type="text/javascript">\n' + loader + '\n</script>' + html[i:]
