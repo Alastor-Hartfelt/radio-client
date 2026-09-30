@@ -9,6 +9,7 @@ on:
       - '.github/workflows/check-radio-engine.yml'
       - 'radio/check_engine_compat.py'
       - 'build.py'
+      - 'gen_textures.py'
       - 'src/**'
       - 'theme/**'
       - 'theme_extra/**'
@@ -43,6 +44,10 @@ jobs:
         run: |
           mkdir -p ref
           cp /tmp/eagler-26.2.html ref/wispcraft-26.2.html
+      - name: Install theme-generation dependency
+        run: python -m pip install Pillow
+      - name: Generate Radio palette textures
+        run: python gen_textures.py
       - name: Run the full Radio Client build
         run: python build.py
       - name: Verify web build stays separate from the homepage
@@ -52,18 +57,3 @@ jobs:
           test -s dist/web/client/version.txt
           test -d dist/web/client/payload
           echo "Homepage preserved; game web build generated under dist/web/client/"
-      - name: Upload private test-build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: radio-client-test-build
-          path: dist/RadioClient.html
-          if-no-files-found: error
-          retention-days: 3
-
-      - name: Upload split web build for deployment testing
-        uses: actions/upload-artifact@v4
-        with:
-          name: radio-client-web-test-build
-          path: dist/web/client/
-          if-no-files-found: error
-          retention-days: 3
