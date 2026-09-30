@@ -72,4 +72,6 @@ A read-only probe now lives at `radio/check_engine_compat.py`. It checks the lit
 
 A manual GitHub Actions workflow at `.github/workflows/check-radio-engine.yml` downloads the candidate HTML from the user's `eaglercraft-26.2` repository into the runner's temporary directory and runs the probe. It does not commit or publish the downloaded HTML. Trigger it from the repository's Actions tab on branch `radio-client`.
 
-**Important:** the workflow has been added but has not yet been run. A passing probe would only establish anchor compatibility, not a successful full build or a browser launch. If anchors differ, adapt the build approach based on the actual HTML structure instead of running the existing patcher blindly.
+**Probe result (2026-09-30): PASS, 13/13 checks.** GitHub Actions run [36685714875](https://github.com/Alastor-Hartfelt/rise-client/actions/runs/36685714875) checked a 75,576,620-byte candidate HTML file with SHA-256 `07c8eefe17b88a0887493b844720c696c5bbc33038accea249d04b7ae3b70be0`. The inline payload decoded to 6,611,946 bytes and matched its declared size; all expected build anchors were found.
+
+**Important:** this confirms literal anchor compatibility only. It does not prove that the full build succeeds, that injected code is compatible at runtime, or that the game launches in a browser. The missing local inputs and redistribution permissions remain unresolved.
