@@ -34,21 +34,22 @@
         document.getElementById("status").textContent = "Pop-up blocked. Allow pop-ups for this site, then try again.";
         return;
       }
+      const clientUrl = new URL("./index.html", window.location.href).href;
       try {
-        blank.document.title = "Rise Client";
-        blank.document.documentElement.style.cssText = "width:100%;height:100%;margin:0;background:#000";
-        blank.document.body.style.cssText = "width:100%;height:100%;margin:0;overflow:hidden;background:#000";
-        const frame = blank.document.createElement("iframe");
-        frame.src = new URL("./", window.location.href).href;
-        frame.title = "Rise Client";
-        frame.allow = "fullscreen; autoplay; gamepad; clipboard-read; clipboard-write";
-        frame.allowFullscreen = true;
-        frame.style.cssText = "position:fixed;inset:0;width:100%;height:100%;border:0;background:#000";
-        blank.document.body.appendChild(frame);
+        blank.document.open();
+        blank.document.write(
+          '<!doctype html><html><head><meta charset="utf-8">' +
+          '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+          '<title>Rise Client</title></head>' +
+          '<body style="margin:0;width:100%;height:100%;overflow:hidden;background:#000">' +
+          '<iframe title="Rise Client" allow="fullscreen; autoplay; gamepad; clipboard-read; clipboard-write" allowfullscreen ' +
+          'style="position:fixed;inset:0;width:100%;height:100%;border:0;background:#000" src="' + clientUrl + '"></iframe>' +
+          '</body></html>'
+        );
+        blank.document.close();
         document.getElementById("status").textContent = "Rise Client opened in a new tab.";
       } catch (error) {
-        blank.close();
-        document.getElementById("status").textContent = "The browser couldn't open the client in about:blank. Open the normal client page instead.";
+        document.getElementById("status").textContent = "The browser couldn't open the blank tab. Try opening the client normally.";
       }
     });
   </script>
