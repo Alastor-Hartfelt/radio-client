@@ -59,6 +59,47 @@ def trim_unifont(zbytes):
     return out.getvalue()
 
 
+
+def radio_tint_container_png(data):
+    """Recolor grayscale container/inventory panels into Radio's dark-crimson palette."""
+    import io
+    from PIL import Image
+    image = Image.open(io.BytesIO(data)).convert('RGBA')
+    pixels = image.load()
+    ramp = [
+        (0.00, (9, 6, 8)),
+        (0.38, (18, 13, 16)),
+        (0.68, (28, 16, 21)),
+        (0.88, (81, 33, 44)),
+        (0.97, (242, 217, 173)),
+    ]
+    for y in range(image.height):
+        for x in range(image.width):
+            r, g, b, a = pixels[x, y]
+            if a == 0:
+                continue
+            mx, mn = max(r, g, b), min(r, g, b)
+            saturation = 0 if mx == 0 else (mx - mn) / mx
+            # Preserve colorful icons and item artwork; recolor only neutral GUI pixels.
+            if saturation > 0.22:
+                continue
+            value = mx / 255
+            left = ramp[0][1]
+            for i in range(1, len(ramp)):
+                stop, right = ramp[i]
+                if value <= stop:
+                    low = ramp[i - 1][0]
+                    t = (value - low) / max(0.001, stop - low)
+                    color = tuple(round(left[j] + (right[j] - left[j]) * t) for j in range(3))
+                    pixels[x, y] = color + (a,)
+                    break
+                left = right
+            else:
+                pixels[x, y] = ramp[-1][1] + (a,)
+    out = io.BytesIO()
+    image.save(out, format='PNG', optimize=True)
+    return out.getvalue()
+
 def patch_assets(epk_bytes):
     import json
     meta, files, _ = read_epk(epk_bytes)
@@ -74,6 +115,8 @@ def patch_assets(epk_bytes):
             continue
         if t == 'FILE' and n in theme:
             d = theme[n]; seen.add(n)
+        elif t == 'FILE' and n.startswith('assets/minecraft/textures/gui/container/') and n.endswith('.png'):
+            d = radio_tint_container_png(d)
         if t == 'FILE' and n == 'assets/minecraft/font/unifont.zip':
             before = len(d); d = trim_unifont(d)
             print('unifont: %.1f MB -> %.2f MB' % (before / 1e6, len(d) / 1e6))
