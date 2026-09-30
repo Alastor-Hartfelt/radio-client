@@ -9,6 +9,10 @@ on:
       - '.github/workflows/check-radio-engine.yml'
       - 'radio/check_engine_compat.py'
       - 'build.py'
+      - 'src/**'
+      - 'theme/**'
+      - 'theme_extra/**'
+      - 'epk.py'
 
 permissions:
   contents: read
@@ -35,3 +39,9 @@ jobs:
           sha256sum /tmp/eagler-26.2.html
       - name: Check existing build anchors
         run: python radio/check_engine_compat.py /tmp/eagler-26.2.html
+      - name: Prepare temporary local build input
+        run: |
+          mkdir -p ref
+          cp /tmp/eagler-26.2.html ref/wispcraft-26.2.html
+      - name: Run the full Radio Client build (no artifact published)
+        run: python build.py
