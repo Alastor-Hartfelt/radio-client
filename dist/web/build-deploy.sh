@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 SITE="$ROOT/site"
 
 # Always deploy the existing launcher, even while the playable build is gated.
+# Keep the launcher-only path lightweight for Vercel Hobby deployments.
 rm -rf "$SITE"
 mkdir -p "$SITE/radio"
 cp "$ROOT/index.html" "$SITE/index.html"
