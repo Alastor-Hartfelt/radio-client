@@ -147,7 +147,7 @@ def main():
     icon = data_uri_png(os.path.join(ROOT, 'theme_extra', 'icon.png'))
     # Accept an icon link regardless of attribute order, quote style, or whether
     # the source icon is inline or a URL. Replace only the first favicon link.
-    icon_link = r'<link\\b(?=[^>]*\\brel=["\\'](?:shortcut\\s+)?icon["\\'])[^>]*>'
+    icon_link = r"<link\b(?=[^>]*\brel=['\"](?:shortcut\s+)?icon['\"])[^>]*>"
     html, icon_count = re.subn(icon_link,
                   lambda _: '<link rel="icon" type="image/png" href="' + icon + '">', html, count=1, flags=re.I)
     assert icon_count == 1, 'favicon link not found'
