@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#090709">
+<title>Radio Client — Preview</title>
+<style>
+:root{color-scheme:dark;--bg:#080608;--panel:#120c10;--panel2:#1d1016;--red:#ff354a;--red2:#a70e28;--text:#fff0f2;--muted:#bd9da4;--line:#51202b}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -15%,#55101e 0,transparent 55%),linear-gradient(140deg,#080608,#10080c 55%,#050405);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
+button{font:inherit;color:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:2px solid #ff8290;outline-offset:3px}
+.shell{max-width:1120px;margin:auto;padding:24px}.top{display:flex;align-items:center;gap:14px;padding:8px 0 24px;border-bottom:1px solid #51202b80}.logo{width:60px;height:60px;object-fit:cover;border:1px solid #77303b;border-radius:14px;box-shadow:0 0 28px #ff354a25}.brand{font-weight:850;font-size:22px;letter-spacing:.13em}.sub{color:var(--muted);font-size:12px;letter-spacing:.16em;text-transform:uppercase}.pill{margin-left:auto;border:1px solid #74303c;background:#210b12;border-radius:99px;padding:6px 10px;color:#ff9ba6;font-size:11px;letter-spacing:.12em}
+.layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:22px;margin-top:24px}.nav,.panel{background:#100b0ee8;border:1px solid #51202b;border-radius:18px;box-shadow:0 18px 55px #0007}.nav{padding:12px;height:max-content}.nav button{width:100%;text-align:left;background:transparent;border:0;padding:12px 13px;border-radius:10px;color:#c9aab0;margin:3px 0}.nav button.active,.nav button:hover{background:linear-gradient(90deg,#54111f88,#250b12);color:#fff;border:1px solid #6d2633}.nav .small{font-size:11px;color:#977780;letter-spacing:.14em;padding:18px 13px 4px;text-transform:uppercase}.main{min-width:0}.hero{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:clamp(22px,5vw,44px);background:linear-gradient(115deg,#2a0b13,#140a0e 65%,#1d080d);border:1px solid #722637;border-radius:18px}.hero:after{content:"";position:absolute;width:250px;height:250px;right:-65px;top:-100px;border:1px solid #ff354a45;border-radius:50%;box-shadow:0 0 0 24px #ff354a08,0 0 0 52px #ff354a06;pointer-events:none}.eyebrow{font-size:11px;letter-spacing:.2em;color:#ff8290;text-transform:uppercase}.hero h1{font-size:clamp(28px,5vw,48px);line-height:1.05;margin:10px 0 12px;letter-spacing:-.04em}.hero p{max-width:440px;color:#d6b8be;margin:0}.hero img{width:clamp(85px,15vw,150px);aspect-ratio:1;object-fit:cover;border-radius:20px;border:1px solid #a63b4b;box-shadow:0 0 50px #ff354a25;z-index:1}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}.primary,.secondary{padding:11px 17px;border-radius:10px;border:1px solid #8d2737;font-weight:750}.primary{background:linear-gradient(135deg,#ff354a,#ad102b);box-shadow:0 7px 24px #ff354a20}.secondary{background:#10090d}.primary:hover{filter:brightness(1.1)}.secondary:hover{background:#281017}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.stat,.panel{padding:18px}.stat{border:1px solid #43202a;background:#100b0f;border-radius:14px}.stat strong{display:block;font-size:17px}.stat span{font-size:12px;color:var(--muted)}.panel{margin-top:14px}.panel h2{font-size:16px;margin:0 0 6px}.panel p{color:var(--muted);margin:0}.feature{display:flex;gap:12px;padding:12px 0;border-top:1px solid #3b1b24}.feature:first-of-type{margin-top:10px}.dot{width:9px;height:9px;flex:none;margin-top:7px;border-radius:50%;background:var(--red);box-shadow:0 0 12px #ff354a80}.feature strong{display:block}.feature span{font-size:13px;color:var(--muted)}.view{display:none}.view.active{display:block}.setting{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 0;border-top:1px solid #3b1b24}.setting label{font-weight:650}.setting small{display:block;color:var(--muted);font-weight:400}.switch{width:44px;height:25px;border:1px solid #73303d;border-radius:99px;background:#281018;padding:3px;flex:none}.switch i{display:block;width:17px;height:17px;background:#98727a;border-radius:50%;transition:transform .15s}.switch[aria-checked=true]{background:#76192a}.switch[aria-checked=true] i{background:#ff8290;transform:translateX(18px)}select{background:#1b0d13;color:var(--text);border:1px solid #73303d;border-radius:8px;padding:8px}.notice{padding:12px 14px;border:1px solid #74303c;background:#1d0c12;border-radius:10px;color:#e8b8c0;font-size:13px;margin-top:14px}.footer{padding:20px 0 8px;color:#886b73;font-size:12px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media(max-width:720px){.shell{padding:14px}.layout{grid-template-columns:1fr}.nav{display:flex;gap:5px;overflow:auto}.nav .small{display:none}.nav button{white-space:nowrap;width:auto}.hero{align-items:flex-start}.hero img{width:78px}.grid{grid-template-columns:1fr}.pill{display:none}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="top">
+<img class="logo" src="https://raw.githubusercontent.com/Alastor-Hartfelt/rise-client/radio-client/theme_extra/radio-logo.jpg" alt="Radio Client compass emblem">
+<div><div class="brand">RADIO CLIENT</div><div class="sub">Tune into your own game</div></div>
+<div class="pill">DESIGN PREVIEW</div>
+</header>
+<div class="layout">
+<nav class="nav" aria-label="Preview navigation">
+<div class="small">Workspace</div>
+<button class="active" data-view="home">◈ &nbsp; Overview</button>
+<button data-view="settings">⚙ &nbsp; Settings concept</button>
+<button data-view="about">◎ &nbsp; About Radio</button>
+</nav>
+<main class="main">
+<section id="home" class="view active">
+<div class="hero">
+<div><div class="eyebrow">Independent project · 26.2 direction</div><h1>Find your<br>frequency.</h1><p>A dark, focused client concept with a red signal, clear controls, and performance-first goals.</p><div class="actions"><button class="primary" id="launch">Launch game</button><button class="secondary" data-go="settings">Explore settings</button></div></div>
+<img src="https://raw.githubusercontent.com/Alastor-Hartfelt/rise-client/radio-client/theme_extra/radio-logo.jpg" alt="Radio Client emblem">
+</div>
+<div class="grid"><div class="stat"><strong>26.2</strong><span>Target version</span></div><div class="stat"><strong>Performance</strong><span>Project priority</span></div><div class="stat"><strong>Black / Red</strong><span>Visual identity</span></div></div>
+<div class="panel"><h2>Built around your playstyle</h2><p>The direction for Radio Client, before connecting a game engine.</p>
+<div class="feature"><i class="dot"></i><div><strong>Performance-first</strong><span>Make optional visual effects easy to control and profile.</span></div></div>
+<div class="feature"><i class="dot"></i><div><strong>Your interface, your rules</strong><span>A consistent menu system designed for keyboard and mouse.</span></div></div>
+<div class="feature"><i class="dot"></i><div><strong>Own identity</strong><span>Original branding and interface, with appropriate third-party notices.</span></div></div></div>
+</section>
+<section id="settings" class="view">
+<div class="panel"><div class="eyebrow">Interface concept</div><h1>Settings</h1><p>These controls demonstrate the design only; they do not change Minecraft settings yet.</p>
+<div class="setting"><div><label for="motion">Reduced menu motion</label><small>Prefer calmer transitions.</small></div><button id="motion" class="switch" role="switch" aria-checked="false" aria-label="Reduced menu motion"><i></i></button></div>
+<div class="setting"><div><label for="glow">Red accent glow</label><small>Toggle decorative interface glow.</small></div><button id="glow" class="switch" role="switch" aria-checked="true" aria-label="Red accent glow"><i></i></button></div>
+<div class="setting"><div><label for="density">Menu density</label><small>Choose a comfortable spacing.</small></div><select id="density"><option>Comfortable</option><option>Compact</option></select></div>
+<div class="notice">Prototype only: choices are not saved, and the game engine is not connected.</div></div>
+</section>
+<section id="about" class="view">
+<div class="panel"><div class="eyebrow">Project notes</div><h1>About Radio Client</h1><p>Radio Client is intended to grow into a distinct client with its own interface, features, and performance work.</p><div class="feature"><i class="dot"></i><div><strong>Design principle</strong><span>Original Radio branding and UI, not a recolor of another project's identity.</span></div></div><div class="feature"><i class="dot"></i><div><strong>Engine status</strong><span>No playable engine is connected to this preview yet.</span></div></div><div class="feature"><i class="dot"></i><div><strong>Licensing</strong><span>Public redistribution remains on hold until the base client and dependencies are verified.</span></div></div><div class="notice">Inspired by client-side performance and customization projects; this preview does not claim to be a standalone Minecraft implementation.</div></div>
+</section>
+</main>
+</div>
+<footer class="footer"><span>RADIO CLIENT · EARLY DESIGN PREVIEW</span><span>Independent interface prototype · Not a playable build</span></footer>
+</div>
+<script>
+const tabs=[...document.querySelectorAll('[data-view]')];
+function show(id){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));tabs.forEach(b=>b.classList.toggle('active',b.dataset.view===id));}
+tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.view)));
+document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
+document.querySelectorAll('.switch').forEach(b=>b.addEventListener('click',()=>b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true'?'true':'false')));
+document.getElementById('launch').addEventListener('click',()=>alert('The game engine is not connected yet. This page is a design preview, not a playable client.'));
+document.getElementById('glow').addEventListener('click',()=>document.body.classList.toggle('no-glow'));
+</script>
+<style>.no-glow .hero img,.no-glow .primary,.no-glow .dot{box-shadow:none}.no-glow .hero:after{display:none}</style>
+</body>
+</html>
