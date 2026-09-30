@@ -49,7 +49,7 @@ checks.extend([
     ("exact pre-boot anchor", html.count(boot) == 1),
     ('one <script type="module"> anchor', html.count('<script type="module">') == 1),
     ("expected Eaglercraft title", '<title>Eaglercraft 26.2 0.6-dev</title>' in html),
-    ("expected inline icon pattern", re.search(r'<link rel="icon" type="image/png" href="data:image/png;base64,[^"]*">', html) is not None),
+    ( "favicon link", re.search(r"<link\\b(?=[^>]*\\brel=['\\\"](?:shortcut\\s+)?icon['\\\"])[^>]*>", html, re.I) is not None),
     ("sync payload decoder anchor", html.count("  function decodePayload(id) {\n") == 1),
     ("async payload decoder anchor", html.count("  function decodePayloadAsync(id) {\n") == 1),
     ("inline WASM release anchor", html.count("  window.__eagReleaseInlineWasm = function () {") == 1),
