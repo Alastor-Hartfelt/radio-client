@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
+<defs>
+ <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#7e0718"/><stop offset=".55" stop-color="#b10b20"/><stop offset="1" stop-color="#26070c"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#f13239" stop-opacity=".6"/><stop offset="1" stop-color="#7e0718" stop-opacity="0"/></radialGradient>
+ <linearGradient id="wood" x2="1" y2=".2"><stop stop-color="#17090b"/><stop offset=".25" stop-color="#6e3020"/><stop offset=".52" stop-color="#291014"/><stop offset=".8" stop-color="#7a3825"/><stop offset="1" stop-color="#13080a"/></linearGradient>
+ <radialGradient id="face" cx=".4" cy=".28" r=".8"><stop stop-color="#fff1c9"/><stop offset=".65" stop-color="#ead2a0"/><stop offset="1" stop-color="#9d7146"/></radialGradient>
+ <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#fff9d8"/><stop offset="1" stop-color="#d5b982"/></linearGradient>
+</defs>
+<rect width="300" height="200" fill="url(#bg)"/><rect width="300" height="200" fill="url(#glow)"/>
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+ <g stroke="#17080b" stroke-width="11">
+  <path d="M119 95 91 69 57 56 42 39 67 45 86 56 106 57 88 38 83 17 104 35 119 53 131 58 124 32 128 12 139 37 141 65"/>
+  <path d="M181 95 209 69 243 56 258 39 233 45 214 56 194 57 212 38 217 17 196 35 181 53 169 58 176 32 172 12 161 37 159 65"/>
+ </g>
+ <g stroke="#71321f" stroke-width="5">
+  <path d="M119 95 91 69 57 56 42 39 67 45 86 56 106 57 88 38 83 17 104 35 119 53 131 58 124 32 128 12 139 37 141 65"/>
+  <path d="M181 95 209 69 243 56 258 39 233 45 214 56 194 57 212 38 217 17 196 35 181 53 169 58 176 32 172 12 161 37 159 65"/>
+ </g>
+ <g stroke="#a75b31" stroke-width="1.4">
+  <path d="M91 69 78 48 M106 57 100 43 M119 53 113 32 M209 69 222 48 M194 57 200 43 M181 53 187 32"/>
+ </g>
+</g>
+<path d="M104 190 109 158 191 158 196 190Z" fill="#16080a" stroke="#6c3424" stroke-width="2"/>
+<ellipse cx="150" cy="112" rx="55" ry="67" fill="url(#wood)" stroke="#14080a" stroke-width="4"/>
+<ellipse cx="150" cy="110" rx="48" ry="59" fill="#b47a45" stroke="#351612" stroke-width="2"/>
+<ellipse cx="150" cy="108" rx="43" ry="53" fill="url(#face)" stroke="#5a3823" stroke-width="2"/>
+<path d="M111 111 Q150 37 189 111 Q150 151 111 111Z" fill="url(#glass)" stroke="#9d774b" stroke-width="1.5"/>
+<path d="M111 111 Q150 80 189 111 Q150 142 111 111Z" fill="#fff4cf" stroke="#b08a55" stroke-width="1.2"/>
+<g stroke="#80613d" stroke-width="1.2" stroke-linecap="round">
+ <path d="M150 110 150 59 M150 110 130 65 M150 110 115 81 M150 110 112 103 M150 110 122 126 M150 110 137 141 M150 110 150 151 M150 110 163 141 M150 110 178 126 M150 110 188 103 M150 110 185 81 M150 110 170 65"/>
+</g>
+<circle cx="150" cy="111" r="4" fill="#7b5b34" stroke="#d8b780" stroke-width="1"/>
+<path d="M112 112 Q150 132 188 112" fill="none" stroke="#7e5a32" stroke-width="2"/>
+<ellipse cx="150" cy="111" rx="51" ry="62" fill="none" stroke="#d0a06a" stroke-width="1.5"/>
+<path d="M107 178 113 171 M193 178 187 171" stroke="#211012" stroke-width="3"/>
+</svg>
