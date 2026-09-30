@@ -31,5 +31,7 @@ jobs:
           curl --fail --location --retry 2 --output /tmp/eagler-26.2.html \
             https://raw.githubusercontent.com/Alastor-Hartfelt/eaglercraft-26.2/main/index.html
           ls -lh /tmp/eagler-26.2.html
+          test "$(wc -c < /tmp/eagler-26.2.html)" -gt 1000000
+          sha256sum /tmp/eagler-26.2.html
       - name: Check existing build anchors
         run: python radio/check_engine_compat.py /tmp/eagler-26.2.html
