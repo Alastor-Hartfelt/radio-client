@@ -68,6 +68,9 @@ FONT = {
     'I': ["11111", "..1..", "..1..", "..1..", "..1..", "..1..", "11111"],
     'S': [".1111", "1....", "1....", ".111.", "....1", "....1", "1111."],
     'E': ["11111", "1....", "1....", "1111.", "1....", "1....", "11111"],
+    'A': ["..1..", ".1.1.", "1...1", "11111", "1...1", "1...1", "1...1"],
+    'D': ["1111.", "1...1", "1...1", "1...1", "1...1", "1...1", "1111."],
+    'O': [".111.", "1...1", "1...1", "1...1", "1...1", "1...1", ".111."],
     'C': [".1111", "1....", "1....", "1....", "1....", "1....", ".1111"],
     'L': ["1....", "1....", "1....", "1....", "1....", "1....", "11111"],
     'N': ["1...1", "11..1", "1.1.1", "1..11", "1...1", "1...1", "1...1"],
@@ -129,6 +132,36 @@ def wordmark(text, cell, depth, outline, gap_cells=1):
     return img
 
 
+
+def radio_wordmark(text, cell, depth, outline, gap_cells=1):
+    """Radio Client wordmark with the O rendered as a tiny analog tuning dial."""
+    art = wordmark(text, cell=cell, depth=depth, outline=outline, gap_cells=gap_cells)
+    if 'O' not in text:
+        return art
+    from PIL import ImageDraw
+    pad = outline + depth + 2
+    ox = pad + text.index('O') * (5 + gap_cells) * cell
+    oy = pad
+    cx, cy = ox + 2.5 * cell, oy + 3.5 * cell
+    d = ImageDraw.Draw(art)
+    # A warm ivory dial face, red center, and a tuning needle make the O distinct
+    # while keeping the chunky pixel lettering legible at Minecraft's logo scale.
+    inset = max(2, cell // 2)
+    box = (int(ox + inset), int(oy + inset), int(ox + 5 * cell - inset), int(oy + 7 * cell - inset))
+    d.ellipse(box, fill=(18, 13, 16, 255), outline=(242, 217, 173, 255), width=max(2, cell // 5))
+    for angle in (-145, -115, -85, -55, -25):
+        import math
+        rad = math.radians(angle)
+        r1, r2 = cell * 1.15, cell * 1.45
+        x1, y1 = cx + math.cos(rad) * r1, cy + math.sin(rad) * r1
+        x2, y2 = cx + math.cos(rad) * r2, cy + math.sin(rad) * r2
+        d.line((x1, y1, x2, y2), fill=(242, 217, 173, 255), width=max(1, cell // 7))
+    d.line((cx, cy, cx + cell * 0.9, cy - cell * 1.15), fill=(243, 38, 62, 255), width=max(2, cell // 4))
+    r = max(2, cell // 4)
+    d.ellipse((cx-r, cy-r, cx+r, cy+r), fill=(242, 217, 173, 255))
+    return art
+
+
 def fit_into(canvas_size, art, area, align='center'):
     cw, ch = canvas_size
     ax, ay, aw, ah = area
@@ -144,7 +177,7 @@ def fit_into(canvas_size, art, area, align='center'):
 # ---------------------------------------------------------------- logos
 def make_logo():
     # Title logo: 1024x256 texture, the game shows the top 176 rows (44/64).
-    art = wordmark('RISE', cell=20, depth=10, outline=6)
+    art = radio_wordmark('RADIO', cell=18, depth=8, outline=5)
     save(fit_into((1024, 256), art, (262, 2, 500, 172)), GUI + 'title/minecraft.png')
     save(fit_into((1024, 256), art, (262, 2, 500, 172)), GUI + 'title/minceraft.png')
     # Edition strip: 512x64 texture, shown region is 392x56 from the left.
@@ -154,7 +187,7 @@ def make_logo():
 
 def make_loading_logo():
     # mojangstudios.png: top half = left half of the wordmark, bottom half = right half.
-    m = glyph_mask('RISE CLIENT', cell=10)
+    m = glyph_mask('RADIO CLIENT', cell=9)
     art = Image.new('RGBA', m.size, (255, 255, 255, 0))
     art.paste((255, 255, 255, 255), (0, 0), m)
     strip = fit_into((1024, 256), art, (40, 60, 944, 136))
@@ -444,12 +477,12 @@ def make_extras():
     """Loading-screen logo and favicon for the HTML shell (theme_extra/)."""
     ex = os.path.join(ROOT, 'theme_extra')
     os.makedirs(ex, exist_ok=True)
-    rise = wordmark('RISE', cell=20, depth=10, outline=6)
+    radio = radio_wordmark('RADIO', cell=18, depth=8, outline=5)
     client = wordmark('CLIENT', cell=7, depth=3, outline=3)
-    W = max(rise.width, client.width)
-    im = Image.new('RGBA', (W, rise.height + client.height - 10), (0, 0, 0, 0))
-    im.alpha_composite(rise, ((W - rise.width) // 2, 0))
-    im.alpha_composite(client, ((W - client.width) // 2, rise.height - 10))
+    W = max(radio.width, client.width)
+    im = Image.new('RGBA', (W, radio.height + client.height - 10), (0, 0, 0, 0))
+    im.alpha_composite(radio, ((W - radio.width) // 2, 0))
+    im.alpha_composite(client, ((W - client.width) // 2, radio.height - 10))
     fit_into((1024, 256), im, (0, 0, 1024, 256)).save(os.path.join(ex, 'boot_logo.png'), optimize=True)
     r = wordmark('R', cell=8, depth=3, outline=3)
     fit_into((64, 64), r, (2, 2, 60, 60)).save(os.path.join(ex, 'icon.png'), optimize=True)
