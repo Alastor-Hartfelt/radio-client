@@ -199,7 +199,7 @@ def main():
     assert html.count(anchor) == 1
     html = html.replace(anchor, '<script type="text/javascript">\n' + rise + '\n</script>\n\t' + anchor)
 
-    # 4. Radio branding: title, favicon, and the radio artwork on the Mojang loading stage.
+    # 4. Radio branding: title, favicon, and the RADIO wordmark on the black loading stage.
     html = html.replace('<title>Eaglercraft 26.2 0.6-dev</title>', '<title>Radio Client</title>', 1)
     icon = data_uri_png(os.path.join(ROOT, 'theme_extra', 'icon.png'))
     # Accept an icon link regardless of attribute order, quote style, or whether
@@ -208,7 +208,7 @@ def main():
     html, icon_count = re.subn(icon_link,
                   lambda _: '<link rel="icon" type="image/png" href="' + icon + '">', html, count=1, flags=re.I)
     assert icon_count == 1, 'favicon link not found'
-    stage = data_uri_image(os.path.join(ROOT, 'theme_extra', 'radio-logo.jpg'))
+    stage = data_uri_png(os.path.join(ROOT, 'theme_extra', 'boot_logo.png'))
     style = ('#loading_screen.minecraft-stage{background:#000!important}'
              '#mojang_stage{background-image:url("' + stage + '")!important;'
              'background-repeat:no-repeat!important;background-position:center!important;'
