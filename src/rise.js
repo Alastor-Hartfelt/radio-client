@@ -1388,6 +1388,7 @@
 
 	var bpLoaded = false;
 	function openBlueprint() {
+		if (!BLUEPRINT_SRC) { toast('Blueprints are unavailable in this build'); return; }
 		if (!bpLoaded) {
 			bpLoaded = true;
 			try { (new Function(BLUEPRINT_SRC))(); } catch (e) { console.warn('[Rise] blueprint', e); toast('Blueprints failed to load'); return; }
