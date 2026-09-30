@@ -43,5 +43,12 @@ jobs:
         run: |
           mkdir -p ref
           cp /tmp/eagler-26.2.html ref/wispcraft-26.2.html
-      - name: Run the full Radio Client build (no artifact published)
+      - name: Run the full Radio Client build
         run: python build.py
+      - name: Upload private test-build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: radio-client-test-build
+          path: dist/RadioClient.html
+          if-no-files-found: error
+          retention-days: 3
