@@ -64,3 +64,12 @@ Before publishing a playable Radio build, verify the applicable permissions and 
 While source inputs or permissions remain unresolved, continue with independently authored Radio UI, documentation, and non-game-specific tooling.
 
 **Current status:** interface prototype plus a candidate 26.2 HTML and a documented patcher workflow; no independently verified, reproducible Radio game build yet.
+
+
+## Compatibility probe added (2026-09-30)
+
+A read-only probe now lives at `radio/check_engine_compat.py`. It checks the literal payload, boot, module, icon, decoder, and WASM-worker anchors that the current `build.py` expects. It also validates the inline asset block's base64 length against its declared size.
+
+A manual GitHub Actions workflow at `.github/workflows/check-radio-engine.yml` downloads the candidate HTML from the user's `eaglercraft-26.2` repository into the runner's temporary directory and runs the probe. It does not commit or publish the downloaded HTML. Trigger it from the repository's Actions tab on branch `radio-client`.
+
+**Important:** the workflow has been added but has not yet been run. A passing probe would only establish anchor compatibility, not a successful full build or a browser launch. If anchors differ, adapt the build approach based on the actual HTML structure instead of running the existing patcher blindly.
