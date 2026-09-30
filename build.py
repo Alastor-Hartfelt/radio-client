@@ -131,13 +131,20 @@ def main():
     import json
     ex = os.path.join(ROOT, 'theme_extra')
     rise = open(os.path.join(ROOT, 'src', 'rise.js'), encoding='utf-8').read()
-    bp = open(os.path.join(ROOT, '..', 'BlueprintMod', 'blueprint.js'), encoding='utf-8').read()
-    a = 'btn.style.display = locked ? "none" : "";'
-    assert a in bp
-    bp = bp.replace(a, 'btn.style.display = "none";')  # opened from the Rise Mods menu instead
-    a = '  function boot() {'
-    assert a in bp
-    bp = bp.replace(a, '  window.__blueprintMod.open = function () { panel.hidden = false; renderPanel(); };\n' + a)
+    bp_path = os.path.join(ROOT, '..', 'BlueprintMod', 'blueprint.js')
+    if os.path.isfile(bp_path):
+        bp = open(bp_path, encoding='utf-8').read()
+        a = 'btn.style.display = locked ? "none" : "";'
+        assert a in bp, 'BlueprintMod lock-button anchor not found'
+        bp = bp.replace(a, 'btn.style.display = "none";')  # opened from the Rise Mods menu instead
+        a = '  function boot() {'
+        assert a in bp, 'BlueprintMod boot anchor not found'
+        bp = bp.replace(a, '  window.__blueprintMod.open = function () { panel.hidden = false; renderPanel(); };\n' + a)
+    else:
+        # BlueprintMod is an optional sibling dependency, not tracked in this repository.
+        # Leave the rest of the client build usable and show a notice if its menu item is clicked.
+        bp = ''
+        print('BlueprintMod not found; blueprint feature will be unavailable in this build')
     rise = (rise.replace('%GLYPHS%', open(os.path.join(ex, 'glyphs.json')).read())
                 .replace('%FONT%', base64.b64encode(open(os.path.join(ex, 'rise-font.ttf'), 'rb').read()).decode())
                 .replace('%PACKS%', open(os.path.join(ex, 'packs.json')).read())
