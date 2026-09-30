@@ -8,6 +8,7 @@ on:
     paths:
       - '.github/workflows/check-radio-engine.yml'
       - 'radio/check_engine_compat.py'
+      - 'build.py'
 
 permissions:
   contents: read
