@@ -10,17 +10,20 @@
 - `src/rise.js` and other root-level implementation files are inherited Rise Client code; they are not a clean-room Radio engine.
 - `dist/web/index.html` and the payload binaries are checked-in generated output. Their presence does not make the build reproducible from a clean checkout.
 
-## Newly identified candidate base
+## Candidate base: Eaglercraft 26.2 HTML
 
 The user-provided repository https://github.com/Alastor-Hartfelt/eaglercraft-26.2 contains an `index.html` reported by GitHub as 75,576,620 bytes (about 75.6 MB decimal), and a short README saying “minecraft 26.2 in the browser” with credit to `o_xer`.
 
-This is a promising lead for locating the intended 26.2 browser build. However:
-- It is a fork of `3lit3-Pl4y3r/eaglercraft-26.2`.
-- GitHub reports no recognized license for either repository.
-- The repository contains only `README.md` and `index.html` on its main branch.
-- It has not been established that this HTML is the specific Wispcraft build expected by Rise's build script, or that it is a drop-in replacement for `ref/wispcraft-26.2.html`.
+The fork's parent repository is https://github.com/3lit3-Pl4y3r/eaglercraft-26.2. Its visible history currently shows:
+- An initial `index.html` upload on 2026-09-15.
+- A README credit update on 2026-09-21.
+- The README attribution is only “credits to o_xer”; it does not provide a source URL, license terms, or redistribution permission.
 
-**Do not automatically copy this HTML into the Radio repository or redistribute it.** First confirm the source project's permissions and inspect whether the existing build pipeline can consume it without modifying or misrepresenting the original engine.
+GitHub reports no recognized license for either the fork or its parent. The parent repository's visible root contains only `README.md` and `index.html`, and its issue list currently has no entries. These facts do not establish who owns all components in the bundled HTML or what reuse rights apply.
+
+This is a promising lead for locating the intended 26.2 browser build, but it has **not** been established that this HTML is the specific Wispcraft build expected by Rise's build script, or that it is a drop-in replacement for `ref/wispcraft-26.2.html`.
+
+**Do not automatically copy this HTML into the Radio repository or redistribute it.** Before using it in a public Radio deployment, ask the repository owner for the original source/project URL and explicit permission for the intended use, and verify the applicable upstream licenses and notices.
 
 ## Reproducible-build blockers
 
@@ -39,11 +42,12 @@ Before publishing a playable build, verify the applicable permissions and notice
 
 ## Next implementation milestone
 
-1. Inspect the candidate base's source history and upstream attribution.
-2. Confirm whether the owner permits the intended local use and public deployment.
-3. Determine whether this HTML can be used as the engine input or whether a source/buildable version is needed.
-4. Obtain missing build inputs from legitimate sources and record exact versions/hashes.
-5. Reproduce a build in a clean environment before changing engine behavior.
-6. Connect Radio's settings to actual engine options and measure performance; do not present mock controls as working game settings.
+1. Request the candidate base's source/project URL and explicit permission for local testing and public deployment from its owner; separately identify the original `o_xer` attribution.
+2. Determine whether the HTML can be used as the engine input or whether a source/buildable version is needed.
+3. Obtain missing build inputs from legitimate sources and record exact versions/hashes.
+4. Reproduce a build in a clean environment before changing engine behavior.
+5. Connect Radio's settings to actual engine options and measure performance; do not present mock controls as working game settings.
+
+While permissions and build inputs are unresolved, continue only with independently authored Radio UI, documentation, and non-game-specific tooling.
 
 **Current status:** interface prototype plus a promising candidate engine file; no independently verified, reproducible Radio game build yet.
