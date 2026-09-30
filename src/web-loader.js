@@ -1,5 +1,5 @@
 /*
- * Rise Client web build: downloads the game payloads as separate binary files
+ * Radio Client web build: downloads the game payloads as separate binary files
  * (instead of 77MB of base64 inside the page) and keeps them in the Cache API,
  * so later launches read them from disk. Payload URLs carry the build version.
  */
@@ -7,7 +7,7 @@
 	'use strict';
 	var V = '%VERSION%';
 	var IDS = %IDS%;
-	var CACHE = 'rise-payload-' + V;
+	var CACHE = 'radio-payload-' + V;
 	var total = %TOTAL%, done = 0;
 	window.__riseBin = {};
 
@@ -21,7 +21,7 @@
 		try {
 			if (!window.caches) return null;
 			var names = await caches.keys();
-			names.forEach(function (n) { if (n.indexOf('rise-payload-') === 0 && n !== CACHE) caches.delete(n); });
+			names.forEach(function (n) { if (n.indexOf('radio-payload-') === 0 && n !== CACHE) caches.delete(n); });
 			return await caches.open(CACHE);
 		} catch (e) { return null; }
 	}
@@ -34,7 +34,7 @@
 			var r = await reader.read();
 			if (r.done) break;
 			parts.push(r.value); got += r.value.length; done += r.value.length;
-			status('Downloading Rise Client… ' + mb(done) + ' / ' + mb(total) + ' MB');
+			status('Downloading Radio Client… ' + mb(done) + ' / ' + mb(total) + ' MB');
 		}
 		var out = new Uint8Array(len && len === got ? len : got), o = 0;
 		for (var i = 0; i < parts.length; i++) { out.set(parts[i], o); o += parts[i].length; }
@@ -54,7 +54,7 @@
 
 	async function fetchBin(id) {
 		var resp = await fetch('payload/' + id + '.bin?v=' + V);
-		if (!resp.ok) throw new Error('Rise payload ' + id + ': HTTP ' + resp.status);
+		if (!resp.ok) throw new Error('Radio payload ' + id + ': HTTP ' + resp.status);
 		return resp;
 	}
 	async function load(id, cache) {
@@ -93,11 +93,11 @@
 	// cached) page, refresh the cached page and reload once.
 	(function () {
 		try {
-			if (sessionStorage.getItem('rise.updated') === V) return;
+			if (sessionStorage.getItem('radio.updated') === V) return;
 			fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (latest) {
 				latest = latest.trim();
-				if (latest && latest !== V && sessionStorage.getItem('rise.updated') !== latest) {
-					sessionStorage.setItem('rise.updated', latest);
+				if (latest && latest !== V && sessionStorage.getItem('radio.updated') !== latest) {
+					sessionStorage.setItem('radio.updated', latest);
 					fetch(location.href, { cache: 'reload' }).then(function () { location.reload(); }, function () { location.reload(); });
 				}
 			}).catch(function () {});
@@ -108,7 +108,7 @@
 		cacheP = openCache();
 		var cache = await cacheP;
 		var hits = await Promise.all(IDS.map(function (id) { return load(id, cache); }));
-		status(hits.every(Boolean) ? 'Starting Rise Client (cached)…' : 'Starting Rise Client…');
+		status(hits.every(Boolean) ? 'Starting Radio Client (cached)…' : 'Starting Radio Client…');
 	})();
 	window.__riseBinReady.catch(function (e) {
 		status('Download failed: ' + e.message + ' — check your connection and reload.');

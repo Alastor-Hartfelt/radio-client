@@ -15,7 +15,7 @@ from epk import read_epk, write_epk
 
 BASE = os.path.join(ROOT, 'ref', 'wispcraft-26.2.html')
 THEME = os.path.join(ROOT, 'theme')
-OUT = os.path.join(ROOT, 'dist', 'RiseClient.html')
+OUT = os.path.join(ROOT, 'dist', 'RadioClient.html')
 LINE = 262144  # base64 line length used by the page's chunked decoder
 
 
@@ -143,7 +143,7 @@ def main():
 
     # 4. branding: title + favicon; the stock Eaglercraft loading screen stays, only the
     #    Mojang stage (which must match the game's first frame) shows the Rise logo
-    html = html.replace('<title>Eaglercraft 26.2 0.6-dev</title>', '<title>Rise Client</title>', 1)
+    html = html.replace('<title>Eaglercraft 26.2 0.6-dev</title>', '<title>Radio Client</title>', 1)
     icon = data_uri_png(os.path.join(ROOT, 'theme_extra', 'icon.png'))
     html = re.sub(r'<link rel="icon" type="image/png" href="data:image/png;base64,[^"]*">',
                   lambda _: '<link rel="icon" type="image/png" href="' + icon + '">', html, count=1)
