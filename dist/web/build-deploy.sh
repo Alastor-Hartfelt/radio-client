@@ -36,7 +36,10 @@ test "$(wc -c < "$SOURCE/ref/wispcraft-26.2.html")" -gt 1000000
 
 (
   cd "$SOURCE"
-  python3 build.py
+  python3 -m venv "$WORK/venv"
+  "$WORK/venv/bin/pip" install --disable-pip-version-check Pillow
+  "$WORK/venv/bin/python" gen_textures.py
+  "$WORK/venv/bin/python" build.py
 )
 
 test -s "$SOURCE/dist/web/client/index.html"
