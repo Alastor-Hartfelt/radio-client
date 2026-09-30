@@ -45,6 +45,13 @@ jobs:
           cp /tmp/eagler-26.2.html ref/wispcraft-26.2.html
       - name: Run the full Radio Client build
         run: python build.py
+      - name: Verify web build stays separate from the homepage
+        run: |
+          test -s dist/web/index.html
+          test -s dist/web/game/index.html
+          test -s dist/web/game/version.txt
+          test -d dist/web/game/payload
+          echo "Homepage preserved; game web build generated under dist/web/game/"
       - name: Upload private test-build artifact
         uses: actions/upload-artifact@v4
         with:
