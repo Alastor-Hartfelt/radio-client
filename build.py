@@ -181,7 +181,7 @@ def main():
 
 
 # ---------------------------------------------------------------- web build
-WEB = os.path.join(ROOT, 'dist', 'web')
+WEB = os.path.join(ROOT, 'dist', 'web', 'game')
 
 WASM_FETCH = r'''  (function () {
     var pf = window.fetch;
