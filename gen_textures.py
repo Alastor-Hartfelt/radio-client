@@ -186,11 +186,26 @@ def make_logo():
 
 
 def make_loading_logo():
-    # mojangstudios.png: top half = left half of the wordmark, bottom half = right half.
-    m = glyph_mask('RADIO CLIENT', cell=9)
-    art = Image.new('RGBA', m.size, (255, 255, 255, 0))
-    art.paste((255, 255, 255, 255), (0, 0), m)
-    strip = fit_into((1024, 256), art, (40, 60, 944, 136))
+    # The game expects a white logo split across two halves of mojangstudios.png.
+    # Keep the radio dial's center transparent and draw its tuning marks in white.
+    art = radio_wordmark('RADIO CLIENT', cell=9, depth=3, outline=2)
+    alpha = art.getchannel('A')
+    white = Image.new('RGBA', art.size, (255, 255, 255, 0))
+    white.putalpha(alpha)
+    from PIL import ImageDraw
+    d = ImageDraw.Draw(white)
+    cell, gap_cells, outline, depth = 9, 1, 2, 3
+    pad = outline + depth + 2
+    ox = pad + 'RADIO CLIENT'.index('O') * (5 + gap_cells) * cell
+    oy = pad
+    cx, cy = ox + 2.5 * cell, oy + 3.5 * cell
+    inset = max(2, cell // 2)
+    box = (int(ox + inset), int(oy + inset), int(ox + 5 * cell - inset), int(oy + 7 * cell - inset))
+    d.ellipse(box, fill=(255, 255, 255, 0), outline=(255, 255, 255, 255), width=2)
+    d.line((cx, cy, cx + cell * 0.9, cy - cell * 1.15), fill=(255, 255, 255, 255), width=2)
+    r = 2
+    d.ellipse((cx-r, cy-r, cx+r, cy+r), fill=(255, 255, 255, 255))
+    strip = fit_into((1024, 256), white, (40, 60, 944, 136))
     tex = Image.new('RGBA', (512, 512), (0, 0, 0, 0))
     tex.paste(strip.crop((0, 0, 512, 256)), (0, 0))
     tex.paste(strip.crop((512, 0, 1024, 256)), (0, 256))
