@@ -2,6 +2,12 @@ name: Check Eagler 26.2 HTML compatibility
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - radio-client
+    paths:
+      - '.github/workflows/check-radio-engine.yml'
+      - 'radio/check_engine_compat.py'
 
 permissions:
   contents: read
