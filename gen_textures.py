@@ -3,21 +3,39 @@ loading-screen logo and menu backgrounds.  Output: theme/<asset path>.
 
 Run with the local venv:  .venv/bin/python gen_textures.py
 """
-import json, math, os, random
+import colorsys, json, math, os, random
 from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, 'theme')
 GUI = 'assets/minecraft/textures/gui/'
 
-# Rise palette
-BG = (2, 18, 34)
-CYAN = (64, 240, 220)      # turquoise
-VIOLET = (18, 120, 230)    # ocean blue (kept the old name: second gradient stop)
-INK = (3, 22, 40)
+# Radio Client palette: near-black, crimson, and warm cream.
+BG = (9, 6, 8)
+CYAN = (243, 38, 62)       # Radio red accent
+VIOLET = (164, 13, 41)     # deep crimson gradient stop
+INK = (18, 13, 16)
+
+
+def radioize(img):
+    """Shift the old blue/cyan Rise artwork into Radio's crimson palette."""
+    rgba = img.convert('RGBA')
+    px = rgba.load()
+    for y in range(rgba.height):
+        for x in range(rgba.width):
+            r, g, b, a = px[x, y]
+            if not a:
+                continue
+            h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+            # Recolor cyan/blue pixels only; preserve neutral grays, black, and whites.
+            if s > 0.16 and 0.42 <= h <= 0.75:
+                rr, gg, bb = colorsys.hsv_to_rgb(0.985, max(0.35, s), v)
+                px[x, y] = (int(rr * 255), int(gg * 255), int(bb * 255), a)
+    return rgba
 
 
 def save(img, path):
+    img = radioize(img)
     full = os.path.join(OUT, path)
     os.makedirs(os.path.dirname(full), exist_ok=True)
     img.save(full, optimize=True)
