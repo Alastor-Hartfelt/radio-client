@@ -145,8 +145,12 @@ def main():
     #    Mojang stage (which must match the game's first frame) shows the Rise logo
     html = html.replace('<title>Eaglercraft 26.2 0.6-dev</title>', '<title>Radio Client</title>', 1)
     icon = data_uri_png(os.path.join(ROOT, 'theme_extra', 'icon.png'))
-    html = re.sub(r'<link rel="icon" type="image/png" href="data:image/png;base64,[^"]*">',
-                  lambda _: '<link rel="icon" type="image/png" href="' + icon + '">', html, count=1)
+    # Accept an icon link regardless of attribute order, quote style, or whether
+    # the source icon is inline or a URL. Replace only the first favicon link.
+    icon_link = r'<link\\b(?=[^>]*\\brel=["\\'](?:shortcut\\s+)?icon["\\'])[^>]*>'
+    html, icon_count = re.subn(icon_link,
+                  lambda _: '<link rel="icon" type="image/png" href="' + icon + '">', html, count=1, flags=re.I)
+    assert icon_count == 1, 'favicon link not found'
     stage = data_uri_png(os.path.join(THEME, 'assets/minecraft/textures/gui/title/mojangstudios.png'))
     style = ('#loading_screen.minecraft-stage{background:#000!important}'
              '#mojang_stage .half{background-image:url("' + stage + '")!important}')
