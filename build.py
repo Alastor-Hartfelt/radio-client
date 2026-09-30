@@ -100,6 +100,14 @@ def data_uri_png(path):
     return 'data:image/png;base64,' + base64.b64encode(open(path, 'rb').read()).decode()
 
 
+def data_uri_image(path):
+    ext = os.path.splitext(path)[1].lower()
+    mime = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png'}.get(ext)
+    if mime is None:
+        raise ValueError('Unsupported image type: ' + ext)
+    return 'data:' + mime + ';base64,' + base64.b64encode(open(path, 'rb').read()).decode()
+
+
 def main():
     html = open(BASE, 'r', encoding='utf-8').read()
 
@@ -141,8 +149,7 @@ def main():
     assert html.count(anchor) == 1
     html = html.replace(anchor, '<script type="text/javascript">\n' + rise + '\n</script>\n\t' + anchor)
 
-    # 4. branding: title + favicon; the stock Eaglercraft loading screen stays, only the
-    #    Mojang stage (which must match the game's first frame) shows the Rise logo
+    # 4. Radio branding: title, favicon, and the radio artwork on the Mojang loading stage.
     html = html.replace('<title>Eaglercraft 26.2 0.6-dev</title>', '<title>Radio Client</title>', 1)
     icon = data_uri_png(os.path.join(ROOT, 'theme_extra', 'icon.png'))
     # Accept an icon link regardless of attribute order, quote style, or whether
@@ -151,9 +158,12 @@ def main():
     html, icon_count = re.subn(icon_link,
                   lambda _: '<link rel="icon" type="image/png" href="' + icon + '">', html, count=1, flags=re.I)
     assert icon_count == 1, 'favicon link not found'
-    stage = data_uri_png(os.path.join(THEME, 'assets/minecraft/textures/gui/title/mojangstudios.png'))
+    stage = data_uri_image(os.path.join(ROOT, 'theme_extra', 'radio-logo.jpg'))
     style = ('#loading_screen.minecraft-stage{background:#000!important}'
-             '#mojang_stage .half{background-image:url("' + stage + '")!important}')
+             '#mojang_stage{background-image:url("' + stage + '")!important;'
+             'background-repeat:no-repeat!important;background-position:center!important;'
+             'background-size:contain!important}'
+             '#mojang_stage .half{background-image:none!important}')
     html = html.replace('</head>', '<style>' + style + '</style>\n</head>', 1)
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
