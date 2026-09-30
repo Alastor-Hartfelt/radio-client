@@ -25,31 +25,42 @@ Because the user owns the fork, there is no need to seek permission from the own
 
 This is a promising candidate for compatibility testing, but it has **not** been established that this HTML is the specific Wispcraft build expected by Rise's build script, or that it is a drop-in replacement for `ref/wispcraft-26.2.html`.
 
-**Do not assume fork ownership alone grants redistribution rights to all upstream components.** Before publishing a playable Radio build, identify the original source/project for the bundled HTML, review applicable upstream terms/notices, and confirm that the planned use and public deployment are permitted.
+## What the Eaglercraft 26.2 patcher README clarifies
+
+The supplied patcher documentation describes a **source patcher and project exporter**, not a complete game source/build distribution. It explicitly says the export omits the game build and important inputs.
+
+Key requirements and limitations described in that documentation:
+- Building the patcher GUI requires JDK 17; its JAR is generated locally rather than included.
+- A Normal standalone HTML build requires the appropriate source project and additional pinned inputs. The documented pipeline lists an official 26.2 client JAR, Vineflower 1.12.0, Java 17, a pinned source patch bundle, a pinned project skeleton, Java 25, Node/npm, and authorized resource packs/EPKs as applicable.
+- The source patch archive contains Mojang-derived Java changes and is omitted from the export. Other inputs such as decompiled game source, assets, resource overlays, media, project skeleton archives, and third-party mod binaries are also omitted.
+- The README says the source folder has no license file and does not grant permission to reuse the code or external inputs.
+- The maintainer's estimate for a full standalone HTML build is about 30 minutes on a capable PC; a recorded build took 41 minutes 46 seconds. The docs recommend 16 GiB RAM or more and say the current linker needs at least a 10 GiB build budget plus a system reserve.
+
+This means the patcher folder alone is **not enough to recreate the game HTML**. It does provide a documented path if the complete, compatible source workspace and authorized pinned inputs are available. The patcher is also a different pipeline from Rise's current HTML-patching build script, so we should not assume the outputs or injection anchors match.
 
 ## Reproducible-build blockers
 
-The current build script expects these local inputs:
+The current Rise build script expects these local inputs:
 
 1. `ref/wispcraft-26.2.html` — ignored by Git via `.gitignore`.
 2. `../BlueprintMod/blueprint.js` — a sibling dependency outside this repository.
 
-The build script also reads local theme and `theme_extra` assets. Before a build can be reproduced, all required inputs must be accounted for and their versions recorded.
+It also expects a particular embedded `eag-inline-assets` block, a known boot-script anchor, and several local theme/`theme_extra` assets. The supplied Eaglercraft patcher docs do not establish that the user's HTML has these exact markers. We need to inspect the HTML structure or run a compatibility check before adapting the script.
 
 ## Permission and licensing gate
 
-There is no root `LICENSE` file on the Radio branch, and GitHub reports no recognized license metadata for the candidate Eaglercraft repositories. A missing license is not permission to copy or redistribute upstream code.
+There is no root `LICENSE` file on the Radio branch, and GitHub reports no recognized license metadata for the candidate Eaglercraft repositories. The supplied patcher documentation itself says it grants no reuse permission. A missing license is not permission to copy or redistribute upstream code.
 
-Before publishing a playable build, verify the applicable permissions and notices for the game base, Wispcraft, BlueprintMod, inherited Rise implementation, assets, fonts, skins, and other bundled components. Keep the Radio interface work separate from inherited implementation until reuse rights are established.
+Before publishing a playable Radio build, verify the applicable permissions and notices for the game base, source patch bundle, Wispcraft, BlueprintMod, inherited Rise implementation, assets, fonts, skins, and other bundled components. Keep the independent Radio interface separate from inherited implementation until reuse rights are established.
 
 ## Next implementation milestone
 
 1. Identify the original source/project behind the bundled HTML and clarify the `o_xer` attribution.
-2. Determine whether this HTML can be used as the engine input or whether a source/buildable version is needed.
-3. Obtain missing build inputs from legitimate sources and record exact versions/hashes.
-4. Reproduce a build in a clean environment before changing engine behavior.
+2. Check whether the user's HTML contains the exact payload and boot markers Rise's script requires.
+3. If compatible, prototype a minimal build-script adaptation on `radio-client` only; otherwise choose between using the documented source-project pipeline (if all inputs are available and authorized) or adapting Radio to the HTML's actual structure.
+4. Record exact input versions/hashes and reproduce the build in a clean environment before changing engine behavior.
 5. Connect Radio's settings to actual engine options and measure performance; do not present mock controls as working game settings.
 
-While provenance and build inputs are unresolved, continue with independently authored Radio UI, documentation, and non-game-specific tooling.
+While source inputs or permissions remain unresolved, continue with independently authored Radio UI, documentation, and non-game-specific tooling.
 
-**Current status:** interface prototype plus a promising candidate engine file; no independently verified, reproducible Radio game build yet.
+**Current status:** interface prototype plus a candidate 26.2 HTML and a documented patcher workflow; no independently verified, reproducible Radio game build yet.
