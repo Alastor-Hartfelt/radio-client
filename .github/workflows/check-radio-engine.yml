@@ -59,3 +59,11 @@ jobs:
           path: dist/RadioClient.html
           if-no-files-found: error
           retention-days: 3
+
+      - name: Upload split web build for deployment testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: radio-client-web-test-build
+          path: dist/web/client/
+          if-no-files-found: error
+          retention-days: 3
