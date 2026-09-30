@@ -48,10 +48,10 @@ jobs:
       - name: Verify web build stays separate from the homepage
         run: |
           test -s dist/web/index.html
-          test -s dist/web/game/index.html
-          test -s dist/web/game/version.txt
-          test -d dist/web/game/payload
-          echo "Homepage preserved; game web build generated under dist/web/game/"
+          test -s dist/web/client/index.html
+          test -s dist/web/client/version.txt
+          test -d dist/web/client/payload
+          echo "Homepage preserved; game web build generated under dist/web/client/"
       - name: Upload private test-build artifact
         uses: actions/upload-artifact@v4
         with:
