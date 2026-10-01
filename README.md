@@ -24,7 +24,7 @@ The `ref/` directory is intentionally gitignored, and the BlueprintMod file is a
 
 ## Licensing and redistribution
 
-**Public redistribution is not yet cleared.** This repository has no declared GitHub license, and the upstream Wispcraft repository also reports no license in its repository metadata. Before publishing a rebuilt client, verify the permissions and notices for the Eaglercraft 26.2 base, Wispcraft, bundled game assets, and every included component. Do not treat a missing license as permission to redistribute.
+The project owner has confirmed that the required permission to publish this build has been obtained. Keep the permission record and follow any attribution or notice conditions that came with it. This confirmation is specific to the project’s deployment; it does not automatically license unrelated forks or third-party components for other uses.
 
 ## Original project
 
