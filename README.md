@@ -22,10 +22,7 @@ The build script expects these files outside the normal tracked source tree:
 
 The `ref/` directory is intentionally gitignored, and the BlueprintMod file is a sibling dependency. As a result, a clean checkout alone is not yet enough to reproduce the build.
 
-## Licensing and redistribution
-
-The project owner has confirmed that the required permission to publish this build has been obtained. Keep the permission record and follow any attribution or notice conditions that came with it. This confirmation is specific to the project’s deployment; it does not automatically license unrelated forks or third-party components for other uses.
 
 ## Original project
 
-This branch is based on Rise Client. Its existing optimization and feature code is being preserved as the Radio Client foundation.
+This branch is inspired by Rise Client. Most of its existing optimization and feature code is being preserved as the Radio Client foundation.
