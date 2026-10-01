@@ -26,7 +26,6 @@
 	var PACKS = %PACKS%;
 	var BLUEPRINT_SRC = %BLUEPRINT%;
 	var PREVIEWS = %PREVIEWS%;
-	var TITLE_ART_B64 = '%TITLE_ART%';
 	var SKINS = %SKINS%;
 	for (var sp in SKINS.packs) PACKS[sp] = SKINS.packs[sp];
 	var SKIN_BY_ID = {};
@@ -627,9 +626,11 @@
 		'*{box-sizing:border-box}',
 		'.mc{font-family:RiseMC,monospace;font-size:16px;line-height:1;color:' + C.text + ';text-shadow:2px 2px 0 rgba(0,0,0,.55);-webkit-font-smoothing:none;user-select:none}',
 		/* game-matched overlay buttons */
-		'.title-art{position:fixed;left:0;top:0;width:100%;height:100%;display:none;z-index:2147483598;background-color:#050406;background-position:center;background-size:100% 100%;background-repeat:no-repeat;pointer-events:none}',
-		'.title-hit{position:absolute;left:38.5%;width:23%;height:5.7%;border:0;padding:0;margin:0;background:transparent;appearance:none;cursor:pointer;pointer-events:auto}',
-		'.title-hit:focus-visible{outline:2px solid #f2d9ad;outline-offset:2px}',
+		'.radio-brand{position:fixed;display:none;align-items:center;gap:10px;z-index:2147483598;pointer-events:none;padding:8px 11px;border:1px solid rgba(243,38,62,.55);border-radius:3px;background:linear-gradient(135deg,rgba(9,7,9,.88),rgba(35,7,13,.78));box-shadow:0 0 18px rgba(243,38,62,.13);color:#f7e9eb}',
+		'.radio-dial{position:relative;flex:0 0 30px;width:30px;height:30px;border:2px solid #f3263e;border-radius:50%;background:radial-gradient(circle, #f3263e 0 2px, #19070b 3px 7px, #8e1225 8px 9px, #090609 10px);box-shadow:0 0 9px rgba(243,38,62,.45),inset 0 0 0 2px rgba(0,0,0,.8)}',
+		'.radio-dial:after{content:"";position:absolute;left:13px;top:4px;width:2px;height:10px;border-radius:2px;background:#ffe2e5;transform:rotate(28deg);transform-origin:bottom center;box-shadow:0 0 4px #f3263e}',
+		'.radio-brand-copy{display:flex;flex-direction:column;gap:3px;font-family:monospace;letter-spacing:2px;font-size:11px;font-weight:700;text-shadow:0 0 8px rgba(243,38,62,.45)}',
+		'.radio-brand-copy small{font-size:9px;font-weight:400;letter-spacing:3px;color:#d49ba4}',
 		'.gbtn{position:fixed;display:none;align-items:center;justify-content:center;padding-top:1px;cursor:pointer;border:1px solid #9b1c2a;border-radius:2px;background:linear-gradient(180deg,#8b1424,#2a080d);color:#fff;overflow:hidden;transition:background .25s ease,border-color .25s ease,box-shadow .25s ease}',
 		'.gbtn::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,220,225,.35),transparent);pointer-events:none}',
 		'.gbtn:hover{background:linear-gradient(180deg,#f3263e,#6b0c1b);border-color:#ff8995;box-shadow:0 0 10px rgba(255,53,74,.35)}',
@@ -755,45 +756,13 @@
 	fontStyle.textContent = '@font-face{font-family:RiseMC;src:url(data:font/ttf;base64,' + FONT_B64 + ') format("truetype");font-display:block}';
 	(document.head || document.documentElement).appendChild(fontStyle);
 	root.innerHTML = '<style>' + CSS + '</style>' +
-		'<div class="title-art" aria-hidden="true">' +
-		'<button class="title-hit" data-title="0" style="top:51.7%" aria-label="Singleplayer"></button>' +
-		'<button class="title-hit" data-title="1" style="top:59.2%" aria-label="Multiplayer"></button>' +
-		'<button class="title-hit" data-title="2" style="top:66.6%" aria-label="Options"></button>' +
-		'<button class="title-hit" data-title="3" style="top:74.0%" aria-label="Quit"></button>' +
-		'</div>' +
+		'<div class="radio-brand" aria-hidden="true"><span class="radio-dial"></span><span class="radio-brand-copy">RADIO CLIENT<small>26.2 · ON AIR</small></span></div>' +
 		'<div class="gbtn mc" data-b="video">Video Settings...</div>' +
 		'<div class="gbtn mc" data-b="mods">Mods</div>' +
 		'<div class="hud mc"></div><div class="toast mc"></div>';
-	var titleArt = root.querySelector('.title-art');
-	titleArt.style.backgroundImage = 'url("data:image/png;base64,' + TITLE_ART_B64 + '")';
-	var titleHits = Array.prototype.slice.call(root.querySelectorAll('.title-hit'));
+	var radioBrand = root.querySelector('.radio-brand');
 	var btnVideo = root.querySelector('[data-b=video]'), btnMods = root.querySelector('[data-b=mods]');
 	var hudEl = root.querySelector('.hud'), toastEl = root.querySelector('.toast');
-	function activateTitleButton(index) {
-		var c = canvasEl();
-		if (!c) return;
-		// Map the artwork's four button centers directly onto the game canvas.
-		// This keeps click targets aligned even when the canvas is letterboxed,
-		// resized, or rendered at a different internal resolution.
-		var centers = [0.545, 0.620, 0.695, 0.770];
-		var b = c.getBoundingClientRect();
-		var x = b.left + b.width * 0.5;
-		var y = b.top + b.height * centers[index];
-		c.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 0 }));
-		c.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 1 }));
-		c.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 0 }));
-		c.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 0 }));
-		// Avoid leaving the title artwork over the next screen during transitions.
-		titleArt.style.display = 'none';
-		lastTitleSeen = 0;
-		setScreen(null);
-	}
-	titleHits.forEach(function (hit, index) {
-		hit.addEventListener('click', function (event) {
-			event.preventDefault(); event.stopPropagation();
-			activateTitleButton(index);
-		});
-	});
 	btnVideo.addEventListener('click', function () { openPanel('video'); });
 	btnMods.addEventListener('click', function () { openPanel('mods'); });
 
@@ -821,22 +790,17 @@
 		el.style.borderWidth = Math.max(1, Math.round(k)) + 'px';
 	}
 	function placeOverlays() {
-		// Match the artwork to the actual game canvas, not the browser viewport,
-		// so the art and its button hit areas stay registered on resize/letterbox.
+		// Preserve the real Minecraft panorama and its original clickable buttons.
+		// Add only a compact radio-themed brand mark in the lower-right corner.
 		var titleCanvas = canvasEl();
 		if (titleCanvas) {
 			var tb = titleCanvas.getBoundingClientRect();
-			titleArt.style.left = tb.left + 'px';
-			titleArt.style.top = tb.top + 'px';
-			titleArt.style.width = tb.width + 'px';
-			titleArt.style.height = tb.height + 'px';
+			radioBrand.style.left = Math.max(8, tb.right - 178) + 'px';
+			radioBrand.style.top = Math.max(8, tb.bottom - 58) + 'px';
 		}
-		// The title detector already confirms this is the title screen. Do not
-		// hide the entire artwork just because OCR misses a button label.
-		titleArt.style.display = screen.name === 'title' && !isOpen ? 'block' : 'none';
+		radioBrand.style.display = screen.name === 'title' && !isOpen ? 'flex' : 'none';
 		placeBtn(btnVideo, screen.name === 'options' ? screen.rects.video : null);
-		// The full-screen title artwork replaces the title's Credits/Mods overlay;
-		// the Mods button remains available from the in-game pause screen.
+		// The Mods button remains available from the in-game pause screen.
 		placeBtn(btnMods, screen.name === 'pause' ? screen.rects.mods : null);
 	}
 	window.addEventListener('resize', function () { layoutCache = {}; pendingCheck = true; setScreen(null); });
