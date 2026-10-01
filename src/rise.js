@@ -1482,7 +1482,8 @@
 			if (!inField) e.stopImmediatePropagation();
 			return;
 		}
-		if (isRShift(e) && !e.repeat && gameReady()) { e.preventDefault(); e.stopImmediatePropagation(); openPanel('mods'); return; }
+		// Only allow the Right Shift shortcut while the game has pointer lock (actively playing in a world/server).
+		if (isRShift(e) && !e.repeat && gameReady() && document.pointerLockElement) { e.preventDefault(); e.stopImmediatePropagation(); openPanel('mods'); return; }
 		if (!document.pointerLockElement) { pendingCheck = true; boostUntil = performance.now() + 2500; return; }
 		var c = codeOf(e);
 		keysDown[c] = true;
