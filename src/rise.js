@@ -26,6 +26,7 @@
 	var PACKS = %PACKS%;
 	var BLUEPRINT_SRC = %BLUEPRINT%;
 	var PREVIEWS = %PREVIEWS%;
+	var TITLE_ART_B64 = '%TITLE_ART%';
 	var SKINS = %SKINS%;
 	for (var sp in SKINS.packs) PACKS[sp] = SKINS.packs[sp];
 	var SKIN_BY_ID = {};
@@ -459,8 +460,28 @@
 		var foot = grab(gl, s, 0, gh - 30, 140, 30);
 		var tf = findText(foot, 'Rewritten by o_xer', 1, 3, gh - 26, gh - 8);
 		if (tf) {
-			// 26.2 title layout: the Credits button sits at (w/2 + 2, h/4 + 144), 98x20
-			setScreen('title', { mods: { x: Math.floor(gw / 2) + 2, y: Math.floor(gh / 4) + 144, w: 98, h: 20 } }, tf.level);
+			// Measure the real menu labels so the artwork's transparent hit areas
+			// can activate the actual Eaglercraft buttons underneath.
+			var allTitle = grab(gl, s, 0, 0, gw, gh);
+			var cxTitle = Math.floor(gw / 2);
+			var titleSpecs = [
+				['Singleplayer'],
+				['Multiplayer'],
+				['Options...', 'Options'],
+				['Quit Game', 'Quit']
+			];
+			var titleActions = titleSpecs.map(function (choices) {
+				var found = null;
+				for (var ci = 0; ci < choices.length && !found; ci++) {
+					found = findText(allTitle, choices[ci], cxTitle - 160, cxTitle + 160,
+						Math.floor(gh * 0.25), Math.floor(gh * 0.92));
+				}
+				return found ? { x: cxTitle - 100, y: found.y - 6, w: 200, h: 20 } : null;
+			});
+			setScreen('title', {
+				mods: { x: Math.floor(gw / 2) + 2, y: Math.floor(gh / 4) + 144, w: 98, h: 20 },
+				titleActions: titleActions
+			}, tf.level);
 			return;
 		}
 		setScreen(null);
@@ -599,6 +620,9 @@
 		'*{box-sizing:border-box}',
 		'.mc{font-family:RiseMC,monospace;font-size:16px;line-height:1;color:' + C.text + ';text-shadow:2px 2px 0 rgba(0,0,0,.55);-webkit-font-smoothing:none;user-select:none}',
 		/* game-matched overlay buttons */
+		'.title-art{position:fixed;inset:0;display:none;z-index:2147483598;background-color:#050406;background-position:center;background-size:100% 100%;background-repeat:no-repeat;pointer-events:none}',
+		'.title-hit{position:absolute;left:38.5%;width:23%;height:5.7%;border:0;padding:0;margin:0;background:transparent;appearance:none;cursor:pointer;pointer-events:auto}',
+		'.title-hit:focus-visible{outline:2px solid #f2d9ad;outline-offset:2px}',
 		'.gbtn{position:fixed;display:none;align-items:center;justify-content:center;padding-top:1px;cursor:pointer;border:1px solid #9b1c2a;border-radius:2px;background:linear-gradient(180deg,#8b1424,#2a080d);color:#fff;overflow:hidden;transition:background .25s ease,border-color .25s ease,box-shadow .25s ease}',
 		'.gbtn::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,220,225,.35),transparent);pointer-events:none}',
 		'.gbtn:hover{background:linear-gradient(180deg,#f3263e,#6b0c1b);border-color:#ff8995;box-shadow:0 0 10px rgba(255,53,74,.35)}',
@@ -724,11 +748,38 @@
 	fontStyle.textContent = '@font-face{font-family:RiseMC;src:url(data:font/ttf;base64,' + FONT_B64 + ') format("truetype");font-display:block}';
 	(document.head || document.documentElement).appendChild(fontStyle);
 	root.innerHTML = '<style>' + CSS + '</style>' +
+		'<div class="title-art" aria-hidden="true">' +
+		'<button class="title-hit" data-title="0" style="top:51.7%" aria-label="Singleplayer"></button>' +
+		'<button class="title-hit" data-title="1" style="top:59.2%" aria-label="Multiplayer"></button>' +
+		'<button class="title-hit" data-title="2" style="top:66.6%" aria-label="Options"></button>' +
+		'<button class="title-hit" data-title="3" style="top:74.0%" aria-label="Quit"></button>' +
+		'</div>' +
 		'<div class="gbtn mc" data-b="video">Video Settings...</div>' +
 		'<div class="gbtn mc" data-b="mods">Mods</div>' +
 		'<div class="hud mc"></div><div class="toast mc"></div>';
+	var titleArt = root.querySelector('.title-art');
+	titleArt.style.backgroundImage = 'url("data:image/png;base64,' + TITLE_ART_B64 + '")';
+	var titleHits = Array.prototype.slice.call(root.querySelectorAll('.title-hit'));
 	var btnVideo = root.querySelector('[data-b=video]'), btnMods = root.querySelector('[data-b=mods]');
 	var hudEl = root.querySelector('.hud'), toastEl = root.querySelector('.toast');
+	function activateTitleButton(index) {
+		var actions = screen.rects && screen.rects.titleActions;
+		var r = actions && actions[index], c = canvasEl();
+		if (!r || !c) return;
+		var b = c.getBoundingClientRect(), k = (b.width / c.width) * screen.s;
+		var x = b.left + (r.x + r.w / 2) * k;
+		var y = b.top + (r.y + r.h / 2) * k;
+		c.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 0 }));
+		c.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 1 }));
+		c.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 0 }));
+		c.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 0 }));
+	}
+	titleHits.forEach(function (hit, index) {
+		hit.addEventListener('click', function (event) {
+			event.preventDefault(); event.stopPropagation();
+			activateTitleButton(index);
+		});
+	});
 	btnVideo.addEventListener('click', function () { openPanel('video'); });
 	btnMods.addEventListener('click', function () { openPanel('mods'); });
 
@@ -756,8 +807,13 @@
 		el.style.borderWidth = Math.max(1, Math.round(k)) + 'px';
 	}
 	function placeOverlays() {
+		var actions = screen.rects && screen.rects.titleActions;
+		var readyTitle = screen.name === 'title' && actions && actions.length === 4 && actions.every(function (r) { return !!r; });
+		titleArt.style.display = readyTitle && !isOpen ? 'block' : 'none';
 		placeBtn(btnVideo, screen.name === 'options' ? screen.rects.video : null);
-		placeBtn(btnMods, screen.name === 'title' || screen.name === 'pause' ? screen.rects.mods : null);
+		// The full-screen title artwork replaces the title's Credits/Mods overlay;
+		// the Mods button remains available from the in-game pause screen.
+		placeBtn(btnMods, screen.name === 'pause' ? screen.rects.mods : null);
 	}
 	window.addEventListener('resize', function () { layoutCache = {}; pendingCheck = true; setScreen(null); });
 
