@@ -249,7 +249,7 @@ def button_face(w, h, top, bottom, border, glow=None, r=2):
 
 
 def accent_underline(im, alpha=255):
-    """Cyan->violet line along the bottom inner edge (Rise hover accent)."""
+    """Crimson gradient line along the bottom inner edge (Radio hover accent)."""
     w, h = im.size
     line = grad_h(w - 6, 1, CYAN, VIOLET, alpha)
     im.alpha_composite(line, (3, h - 2))
@@ -295,42 +295,42 @@ def animated(path, frames, w, h, border, timeline):
     }, indent=4), path + '.mcmeta')
 
 
-# Ocean palette for widgets
-OCEAN_TOP = (14, 92, 140)
-OCEAN_BOT = (6, 52, 92)
-EDGE = (40, 170, 200, 255)
-HOVER_TOP = (30, 190, 200)
-HOVER_BOT = (12, 118, 190)
-HOVER_EDGE = (170, 255, 245, 255)
+# Radio palette for widgets: dark oxblood surfaces, crimson hover, warm-cream edge.
+OCEAN_TOP = (95, 14, 30)
+OCEAN_BOT = (28, 8, 13)
+EDGE = (120, 39, 53, 255)
+HOVER_TOP = (243, 38, 62)
+HOVER_BOT = (130, 12, 35)
+HOVER_EDGE = (242, 217, 173, 255)
 
 
 def make_widgets():
     W = GUI + 'sprites/widget/'
-    # buttons (200x20): ocean blue, turquoise rim
+    # buttons (200x20): dark oxblood face, muted crimson rim
     b = button_face(200, 20, OCEAN_TOP + (235,), OCEAN_BOT + (235,), EDGE, (255, 255, 255, 30))
     save(b, W + 'button.png'); nine(W + 'button.png', 200, 20, 4)
-    # hover: brighter turquoise with an animated shine sweep (plays while hovered)
+    # hover: brighter crimson with a warm highlight sweep (plays while hovered)
     bh = button_face(200, 20, HOVER_TOP + (245,), HOVER_BOT + (245,), HOVER_EDGE, (255, 255, 255, 60))
-    bh.alpha_composite(grad_h(194, 1, (220, 255, 250), (160, 220, 255), 120), (3, 2))
+    bh.alpha_composite(grad_h(194, 1, (255, 224, 205), (242, 217, 173), 120), (3, 2))
     fr = shine_frames(bh)
     timeline = [{"index": 0, "time": 6}] + list(range(1, len(fr))) + [{"index": 0, "time": 24}]
     animated(W + 'button_highlighted.png', fr, 200, 20, 4, timeline)
-    bd = button_face(200, 20, (10, 34, 52, 180), (8, 26, 42, 180), (30, 70, 90, 255))
+    bd = button_face(200, 20, (24, 9, 14, 180), (14, 7, 10, 180), (65, 24, 34, 255))
     save(bd, W + 'button_disabled.png'); nine(W + 'button_disabled.png', 200, 20, 4)
     # sliders
-    s = button_face(200, 20, (4, 30, 52, 225), (6, 40, 66, 225), (30, 130, 170, 255))
+    s = button_face(200, 20, (16, 8, 12, 225), (29, 10, 16, 225), (105, 31, 46, 255))
     save(s, W + 'slider.png'); nine(W + 'slider.png', 200, 20, 4)
-    sh = button_face(200, 20, (6, 44, 72, 235), (8, 56, 90, 235), HOVER_EDGE)
+    sh = button_face(200, 20, (35, 10, 17, 235), (55, 12, 24, 235), HOVER_EDGE)
     save(sh, W + 'slider_highlighted.png'); nine(W + 'slider_highlighted.png', 200, 20, 4)
     hb = {"left": 2, "top": 2, "right": 2, "bottom": 3}
-    handle = button_face(8, 20, (90, 245, 225, 255), (20, 150, 220, 255), (210, 255, 250, 255), r=1)
+    handle = button_face(8, 20, (243, 38, 62, 255), (130, 12, 35, 255), (242, 217, 173, 255), r=1)
     save(handle, W + 'slider_handle.png'); nine(W + 'slider_handle.png', 8, 20, hb)
-    handle_h = button_face(8, 20, (190, 255, 245, 255), (90, 200, 255, 255), (255, 255, 255, 255), r=1)
+    handle_h = button_face(8, 20, (255, 137, 149, 255), (243, 38, 62, 255), (255, 255, 255, 255), r=1)
     save(handle_h, W + 'slider_handle_highlighted.png'); nine(W + 'slider_handle_highlighted.png', 8, 20, hb)
     # text fields
-    tf = button_face(200, 20, (2, 16, 30, 240), (2, 16, 30, 240), (30, 130, 170, 255), r=2)
+    tf = button_face(200, 20, (12, 7, 10, 240), (12, 7, 10, 240), (105, 31, 46, 255), r=2)
     save(tf, W + 'text_field.png'); nine(W + 'text_field.png', 200, 20, 3)
-    tfh = button_face(200, 20, (3, 20, 36, 245), (3, 20, 36, 245), HOVER_EDGE, r=2)
+    tfh = button_face(200, 20, (20, 8, 13, 245), (20, 8, 13, 245), HOVER_EDGE, r=2)
     save(tfh, W + 'text_field_highlighted.png'); nine(W + 'text_field_highlighted.png', 200, 20, 3)
     # tabs (130x24, bottom border 0)
     tb = {"left": 3, "top": 3, "right": 3, "bottom": 0}
@@ -339,14 +339,14 @@ def make_widgets():
         if underline:
             im.alpha_composite(grad_h(124, 2, CYAN, VIOLET), (3, 22))
         return im
-    save(tab((8, 50, 84, 210), (5, 36, 64, 210), (30, 120, 160, 255), False), W + 'tab.png'); nine(W + 'tab.png', 130, 24, tb)
-    save(tab((14, 80, 124, 235), (8, 56, 96, 235), (90, 220, 230, 255), False), W + 'tab_highlighted.png'); nine(W + 'tab_highlighted.png', 130, 24, tb)
-    save(tab((16, 96, 146, 245), (10, 66, 112, 245), HOVER_EDGE, True), W + 'tab_selected.png'); nine(W + 'tab_selected.png', 130, 24, tb)
-    save(tab((26, 130, 170, 250), (14, 86, 140, 250), (230, 255, 252, 255), True), W + 'tab_selected_highlighted.png'); nine(W + 'tab_selected_highlighted.png', 130, 24, tb)
+    save(tab((38, 11, 19, 210), (24, 8, 13, 210), (105, 31, 46, 255), False), W + 'tab.png'); nine(W + 'tab.png', 130, 24, tb)
+    save(tab((85, 17, 32, 235), (42, 10, 18, 235), (90, 220, 230, 255), False), W + 'tab_highlighted.png'); nine(W + 'tab_highlighted.png', 130, 24, tb)
+    save(tab((125, 22, 39, 245), (65, 13, 25, 245), HOVER_EDGE, True), W + 'tab_selected.png'); nine(W + 'tab_selected.png', 130, 24, tb)
+    save(tab((165, 29, 46, 250), (95, 14, 30, 250), (230, 255, 252, 255), True), W + 'tab_selected_highlighted.png'); nine(W + 'tab_selected_highlighted.png', 130, 24, tb)
     # checkboxes (20x20)
     def check(selected, hover):
         border = HOVER_EDGE if hover else EDGE
-        im = button_face(20, 20, (6, 46, 80, 240), (4, 32, 60, 240), border, r=2)
+        im = button_face(20, 20, (24, 8, 13, 240), (15, 7, 10, 240), border, r=2)
         if selected:
             inner = button_face(12, 12, CYAN + (255,), VIOLET + (255,), (220, 255, 250, 255), r=1)
             im.alpha_composite(inner, (4, 4))
@@ -358,16 +358,16 @@ def make_widgets():
     # scroller (6x32)
     save(button_face(6, 32, CYAN + (255,), VIOLET + (255,), (210, 255, 250, 255), r=1), W + 'scroller.png')
     nine(W + 'scroller.png', 6, 32, 1)
-    save(button_face(6, 32, (2, 20, 36, 210), (2, 20, 36, 210), (20, 70, 100, 255), r=1), W + 'scroller_background.png')
+    save(button_face(6, 32, (14, 7, 10, 210), (14, 7, 10, 210), (55, 18, 27, 255), r=1), W + 'scroller_background.png')
     nine(W + 'scroller_background.png', 6, 32, 1)
 
 
 def make_backgrounds():
-    # Menu backgrounds are tiled over the blurred panorama.
-    save(Image.new('RGBA', (16, 16), (2, 20, 38, 140)), GUI + 'menu_background.png')
-    save(Image.new('RGBA', (16, 16), (2, 20, 38, 110)), GUI + 'inworld_menu_background.png')
-    save(Image.new('RGBA', (16, 16), (1, 14, 28, 170)), GUI + 'menu_list_background.png')
-    save(Image.new('RGBA', (16, 16), (1, 14, 28, 130)), GUI + 'inworld_menu_list_background.png')
+    # Menu backgrounds are tiled over the blurred crimson panorama.
+    save(Image.new('RGBA', (16, 16), (14, 7, 10, 140)), GUI + 'menu_background.png')
+    save(Image.new('RGBA', (16, 16), (14, 7, 10, 110)), GUI + 'inworld_menu_background.png')
+    save(Image.new('RGBA', (16, 16), (20, 7, 12, 170)), GUI + 'menu_list_background.png')
+    save(Image.new('RGBA', (16, 16), (20, 7, 12, 130)), GUI + 'inworld_menu_list_background.png')
     for name in ('header_separator', 'footer_separator', 'inworld_header_separator', 'inworld_footer_separator'):
         im = Image.new('RGBA', (32, 2), (0, 0, 0, 0))
         im.alpha_composite(grad_h(32, 1, CYAN, VIOLET, 210), (0, 0 if 'header' in name else 1))
@@ -376,13 +376,13 @@ def make_backgrounds():
 
 
 def make_panorama():
-    """Six 256x256 cube faces of a deep ocean: light from the surface above,
-    god-rays and drifting bubbles on the sides, the dark abyss below.
+    """Six 256x256 cube faces of a crimson broadcast nebula: warm light above,
+    soft red rays and cream signal specks on the sides, near-black below.
     Side faces share one vertical gradient so the seams line up."""
     S = 256
-    SURF = (70, 210, 220)
-    MID = (8, 96, 150)
-    DEEP = (2, 18, 40)
+    SURF = (145, 28, 45)
+    MID = (48, 12, 22)
+    DEEP = (8, 6, 9)
 
     def side_color(t):  # t: 0 top .. 1 bottom
         return lerp(SURF, MID, t / 0.45) if t < 0.45 else lerp(MID, DEEP, (t - 0.45) / 0.55)
@@ -404,7 +404,7 @@ def make_panorama():
                 wdt = rnd.randint(8, 22)
                 slant = rnd.randint(-40, 40)
                 rd.polygon([(x0, 0), (x0 + wdt, 0), (x0 + wdt + slant + 20, S), (x0 + slant - 20, S)],
-                           fill=(200, 255, 250, 46))
+                           fill=(255, 115, 130, 38))
             rays = rays.filter(ImageFilter.GaussianBlur(7))
             fade = Image.new('L', (S, S))
             fp = fade.load()
@@ -419,12 +419,12 @@ def make_panorama():
             for _ in range(26):
                 x, y = rnd.randint(10, 245), rnd.randint(10, 245)
                 r = rnd.choice((1, 1, 2, 2, 3))
-                d.ellipse([x - r, y - r, x + r, y + r], outline=(200, 255, 250, 150))
+                d.ellipse([x - r, y - r, x + r, y + r], outline=(242, 217, 173, 145))
                 d.point([(x - r // 2, y - r // 2)], fill=(255, 255, 255, 200))
             # floating particles (plankton)
             for _ in range(60):
                 x, y = rnd.randrange(S), rnd.randrange(S)
-                d.point([(x, y)], fill=(160, 240, 235, rnd.randint(60, 160)))
+                d.point([(x, y)], fill=(243, 38, 62, rnd.randint(60, 150)))
         elif face == 4:  # up: the surface seen from below, bright caustics
             for y in range(S):
                 for x in range(S):
@@ -445,7 +445,7 @@ def make_panorama():
                 for x in range(S):
                     dx, dy = (x - 128) / 128, (y - 128) / 128
                     t = min(1, math.sqrt(dx * dx + dy * dy))
-                    px[x, y] = lerp((1, 8, 20), DEEP, t) + (255,)
+                    px[x, y] = lerp((18, 7, 12), DEEP, t) + (255,)
         save(im.convert('RGB'), GUI + 'title/background/panorama_%d.png' % face)
     save(Image.new('RGBA', (1, 1), (0, 0, 0, 0)), GUI + 'title/background/panorama_overlay.png')
 
@@ -454,21 +454,21 @@ SPLASHES = """Now with observers!
 Railguns approved!
 Flying machines fly!
 Stasis chambers work!
-Sodium-style settings!
-Right Shift for Rise!
+Crimson-style settings!
+Right Shift for Radio!
 Runs on a Chromebook!
 LAN worlds for the class!
 Quasi-connectivity intact!
 Bubble columns bubble!
 Zero-tick ready!
-Rise and grind!
+Tune in and grind!
 26.2 in a browser!
 Built for 4GB of RAM!
 Also try redstone!
 Slime blocks stick!
 Observers observe!
 Piston timing: Java!
-Now 100% more Rise!
+Now 100% more Radio!
 Chunk loading, but faster!
 """
 
