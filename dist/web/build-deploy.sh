@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 SITE="$ROOT/site"
 
 # Preserve the existing launcher and build the playable client into /client/.
+# The build pulls the branch tip, regenerates the vintage Radio tentacle panorama, and keeps the homepage unchanged.
 rm -rf "$SITE"
 mkdir -p "$SITE/radio"
 cp "$ROOT/index.html" "$SITE/index.html"
