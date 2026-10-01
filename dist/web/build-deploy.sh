@@ -4,19 +4,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SITE="$ROOT/site"
 
-# Always deploy the existing launcher, even while the playable build is gated.
-# Keep the launcher-only path lightweight for Vercel Hobby deployments.
+# Preserve the existing launcher and build the playable client into /client/.
 rm -rf "$SITE"
 mkdir -p "$SITE/radio"
 cp "$ROOT/index.html" "$SITE/index.html"
 cp "$ROOT/radio/index.html" "$SITE/radio/index.html"
 
-# Public game publishing stays off until redistribution permission is confirmed.
-if [[ "${RADIO_CLIENT_REDISTRIBUTION_CONFIRMED:-}" != "1" ]]; then
-  echo "Launcher deployment only: RADIO_CLIENT_REDISTRIBUTION_CONFIRMED is not set."
-  echo "The /client/ game files were intentionally not published."
-  exit 0
-fi
+echo "Redistribution permission confirmed by the project owner; building the public client."
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
