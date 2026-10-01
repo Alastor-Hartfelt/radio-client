@@ -765,7 +765,11 @@
 	function activateTitleButton(index) {
 		var actions = screen.rects && screen.rects.titleActions;
 		var r = actions && actions[index], c = canvasEl();
-		if (!r || !c) return;
+		if (!c) return;
+		// Use the measured vanilla button when recognized; otherwise fall back
+		// to the corresponding button position in the static artwork.
+		var centers = [0.545, 0.620, 0.695, 0.770];
+		if (!r) r = { x: Math.floor(screen.gw / 2) - 100, y: Math.floor(screen.gh * centers[index]) - 10, w: 200, h: 20 };
 		var b = c.getBoundingClientRect(), k = (b.width / c.width) * screen.s;
 		var x = b.left + (r.x + r.w / 2) * k;
 		var y = b.top + (r.y + r.h / 2) * k;
@@ -807,9 +811,9 @@
 		el.style.borderWidth = Math.max(1, Math.round(k)) + 'px';
 	}
 	function placeOverlays() {
-		var actions = screen.rects && screen.rects.titleActions;
-		var readyTitle = screen.name === 'title' && actions && actions.length === 4 && actions.every(function (r) { return !!r; });
-		titleArt.style.display = readyTitle && !isOpen ? 'block' : 'none';
+		// The title detector already confirms this is the title screen. Do not
+		// hide the entire artwork just because OCR misses a button label.
+		titleArt.style.display = screen.name === 'title' && !isOpen ? 'block' : 'none';
 		placeBtn(btnVideo, screen.name === 'options' ? screen.rects.video : null);
 		// The full-screen title artwork replaces the title's Credits/Mods overlay;
 		// the Mods button remains available from the in-game pause screen.
