@@ -105,6 +105,40 @@ def radio_tint_container_png(data):
     return out.getvalue()
 
 
+
+def radio_tint_button_png(data, disabled=False):
+    """Recolor native Java-style button sprites while preserving alpha and hover frames."""
+    import io
+    from PIL import Image
+    image = Image.open(io.BytesIO(data)).convert('RGBA')
+    px = image.load()
+    ramp = ([(0.00, (8, 5, 7)), (0.35, (18, 8, 12)), (0.70, (34, 11, 18)), (1.00, (65, 22, 31))]
+            if disabled else
+            [(0.00, (8, 5, 7)), (0.25, (20, 8, 13)), (0.55, (72, 13, 27)),
+             (0.82, (133, 24, 42)), (1.00, (205, 55, 70))])
+    for y in range(image.height):
+        for x in range(image.width):
+            r, g, b, a = px[x, y]
+            if a == 0:
+                continue
+            mx, mn = max(r, g, b), min(r, g, b)
+            if mx - mn < 18 and mx >= 190:
+                px[x, y] = (242, 217, 173, a)
+                continue
+            value = mx / 255
+            for i in range(1, len(ramp)):
+                stop, color = ramp[i]
+                if value <= stop:
+                    low_stop, low_color = ramp[i - 1]
+                    t = (value - low_stop) / max(0.001, stop - low_stop)
+                    px[x, y] = tuple(round(low_color[c] + (color[c] - low_color[c]) * t) for c in range(3)) + (a,)
+                    break
+            else:
+                px[x, y] = ramp[-1][1] + (a,)
+    out = io.BytesIO()
+    image.save(out, format='PNG', optimize=True)
+    return out.getvalue()
+
 def radio_clean_panorama_face(data):
     """Replace the panorama face carrying the old creator mark with a clean starfield."""
     import io, random
@@ -149,6 +183,11 @@ def patch_assets(epk_bytes):
             d = theme[n]; seen.add(n)
         elif t == 'FILE' and n.startswith('assets/minecraft/textures/gui/container/') and n.endswith('.png'):
             d = radio_tint_container_png(d)
+        if t == 'FILE' and n in (
+                'assets/minecraft/textures/gui/sprites/widget/button.png',
+                'assets/minecraft/textures/gui/sprites/widget/button_highlighted.png',
+                'assets/minecraft/textures/gui/sprites/widget/button_disabled.png'):
+            d = radio_tint_button_png(d, disabled=n.endswith('button_disabled.png'))
         if t == 'FILE' and n == 'assets/minecraft/textures/gui/title/background/panorama_4.png':
             source = theme.get('assets/minecraft/textures/gui/title/background/panorama_0.png')
             if source is not None:
