@@ -406,7 +406,7 @@
 
 	// ------------------------------------------------------------ screen watcher
 	var screen = { name: null, s: 1, gw: 0, gh: 0, rects: {} }, layoutCache = {};
-	var lastCheck = 0, boostUntil = 0, pendingCheck = false;
+	var lastCheck = 0, boostUntil = 0, pendingCheck = false, lastTitleSeen = 0;
 	function watcher(gl) {
 		var now = performance.now();
 		// unknown screen (or just changed): look every frame so our buttons land before you can see the game's
@@ -460,6 +460,7 @@
 		var foot = grab(gl, s, 0, gh - 30, 140, 30);
 		var tf = findText(foot, 'Rewritten by o_xer', 1, 3, gh - 26, gh - 8);
 		if (tf) {
+			lastTitleSeen = now;
 			// Measure the real menu labels so the artwork's transparent hit areas
 			// can activate the actual Eaglercraft buttons underneath.
 			var allTitle = grab(gl, s, 0, 0, gw, gh);
@@ -482,6 +483,12 @@
 				mods: { x: Math.floor(gw / 2) + 2, y: Math.floor(gh / 4) + 144, w: 98, h: 20 },
 				titleActions: titleActions
 			}, tf.level);
+			return;
+		}
+		// The title's tiny version credit can fail pixel matching during fades or
+		// scaling. Keep the artwork stable through brief misses instead of flashing.
+		if (screen.name === 'title' && now - lastTitleSeen < 1800) {
+			placeOverlays();
 			return;
 		}
 		setScreen(null);
@@ -620,7 +627,7 @@
 		'*{box-sizing:border-box}',
 		'.mc{font-family:RiseMC,monospace;font-size:16px;line-height:1;color:' + C.text + ';text-shadow:2px 2px 0 rgba(0,0,0,.55);-webkit-font-smoothing:none;user-select:none}',
 		/* game-matched overlay buttons */
-		'.title-art{position:fixed;inset:0;display:none;z-index:2147483598;background-color:#050406;background-position:center;background-size:100% 100%;background-repeat:no-repeat;pointer-events:none}',
+		'.title-art{position:fixed;left:0;top:0;width:100%;height:100%;display:none;z-index:2147483598;background-color:#050406;background-position:center;background-size:100% 100%;background-repeat:no-repeat;pointer-events:none}',
 		'.title-hit{position:absolute;left:38.5%;width:23%;height:5.7%;border:0;padding:0;margin:0;background:transparent;appearance:none;cursor:pointer;pointer-events:auto}',
 		'.title-hit:focus-visible{outline:2px solid #f2d9ad;outline-offset:2px}',
 		'.gbtn{position:fixed;display:none;align-items:center;justify-content:center;padding-top:1px;cursor:pointer;border:1px solid #9b1c2a;border-radius:2px;background:linear-gradient(180deg,#8b1424,#2a080d);color:#fff;overflow:hidden;transition:background .25s ease,border-color .25s ease,box-shadow .25s ease}',
@@ -763,20 +770,23 @@
 	var btnVideo = root.querySelector('[data-b=video]'), btnMods = root.querySelector('[data-b=mods]');
 	var hudEl = root.querySelector('.hud'), toastEl = root.querySelector('.toast');
 	function activateTitleButton(index) {
-		var actions = screen.rects && screen.rects.titleActions;
-		var r = actions && actions[index], c = canvasEl();
+		var c = canvasEl();
 		if (!c) return;
-		// Use the measured vanilla button when recognized; otherwise fall back
-		// to the corresponding button position in the static artwork.
+		// Map the artwork's four button centers directly onto the game canvas.
+		// This keeps click targets aligned even when the canvas is letterboxed,
+		// resized, or rendered at a different internal resolution.
 		var centers = [0.545, 0.620, 0.695, 0.770];
-		if (!r) r = { x: Math.floor(screen.gw / 2) - 100, y: Math.floor(screen.gh * centers[index]) - 10, w: 200, h: 20 };
-		var b = c.getBoundingClientRect(), k = (b.width / c.width) * screen.s;
-		var x = b.left + (r.x + r.w / 2) * k;
-		var y = b.top + (r.y + r.h / 2) * k;
+		var b = c.getBoundingClientRect();
+		var x = b.left + b.width * 0.5;
+		var y = b.top + b.height * centers[index];
 		c.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 0 }));
 		c.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 1 }));
 		c.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 0 }));
 		c.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, button: 0, buttons: 0 }));
+		// Avoid leaving the title artwork over the next screen during transitions.
+		titleArt.style.display = 'none';
+		lastTitleSeen = 0;
+		setScreen(null);
 	}
 	titleHits.forEach(function (hit, index) {
 		hit.addEventListener('click', function (event) {
@@ -811,6 +821,16 @@
 		el.style.borderWidth = Math.max(1, Math.round(k)) + 'px';
 	}
 	function placeOverlays() {
+		// Match the artwork to the actual game canvas, not the browser viewport,
+		// so the art and its button hit areas stay registered on resize/letterbox.
+		var titleCanvas = canvasEl();
+		if (titleCanvas) {
+			var tb = titleCanvas.getBoundingClientRect();
+			titleArt.style.left = tb.left + 'px';
+			titleArt.style.top = tb.top + 'px';
+			titleArt.style.width = tb.width + 'px';
+			titleArt.style.height = tb.height + 'px';
+		}
 		// The title detector already confirms this is the title screen. Do not
 		// hide the entire artwork just because OCR misses a button label.
 		titleArt.style.display = screen.name === 'title' && !isOpen ? 'block' : 'none';
