@@ -376,79 +376,186 @@ def make_backgrounds():
 
 
 def make_panorama():
-    """Six 256x256 cube faces of a crimson broadcast nebula: warm light above,
-    soft red rays and cream signal specks on the sides, near-black below.
-    Side faces share one vertical gradient so the seams line up."""
+    """Generate an original vintage-radio occult panorama for the Radio title screen.
+
+    The four side faces are crops from one continuous crimson city scene, so the
+    art feels like a single environment rather than the old Rise Client backdrop.
+    The logo and clickable Minecraft menu buttons remain separate game UI assets.
+    """
     S = 256
-    SURF = (145, 28, 45)
-    MID = (48, 12, 22)
-    DEEP = (8, 6, 9)
+    W, H = S * 4, S
+    DEEP = (5, 4, 7)
+    INK = (10, 5, 9)
+    CRIMSON = (220, 13, 42)
+    RED = (145, 8, 29)
+    CREAM = (242, 217, 173)
 
-    def side_color(t):  # t: 0 top .. 1 bottom
-        return lerp(SURF, MID, t / 0.45) if t < 0.45 else lerp(MID, DEEP, (t - 0.45) / 0.55)
+    scene = Image.new('RGB', (W, H), DEEP)
+    px = scene.load()
+    # Smoky broadcast-hour sky. A gentle periodic horizontal glow avoids a
+    # conspicuous brightness jump where the four side faces meet.
+    for y in range(H):
+        t = y / (H - 1)
+        if t < 0.58:
+            base = lerp((10, 5, 10), (48, 8, 22), t / 0.58)
+        else:
+            base = lerp((48, 8, 22), (7, 4, 8), (t - 0.58) / 0.42)
+        for x in range(W):
+            glow = (math.sin((x / W) * math.pi * 2 - 0.8) + 1) * 0.5
+            haze = max(0, 1 - abs(y - 110) / 95) * glow
+            px[x, y] = (
+                min(255, int(base[0] + 33 * haze)),
+                min(255, int(base[1] + 3 * haze)),
+                min(255, int(base[2] + 8 * haze)),
+            )
 
-    for face in range(6):
-        rnd = random.Random(2000 + face)
-        im = Image.new('RGBA', (S, S))
-        px = im.load()
-        if face < 4:
-            for y in range(S):
-                c = side_color(y / (S - 1))
-                for x in range(S):
-                    px[x, y] = c + (255,)
-            # god rays: soft slanted bright bands fading downward (kept off the edges)
-            rays = Image.new('RGBA', (S, S), (0, 0, 0, 0))
-            rd = ImageDraw.Draw(rays)
-            for _ in range(4):
-                x0 = rnd.randint(30, 200)
-                wdt = rnd.randint(8, 22)
-                slant = rnd.randint(-40, 40)
-                rd.polygon([(x0, 0), (x0 + wdt, 0), (x0 + wdt + slant + 20, S), (x0 + slant - 20, S)],
-                           fill=(255, 115, 130, 38))
-            rays = rays.filter(ImageFilter.GaussianBlur(7))
-            fade = Image.new('L', (S, S))
-            fp = fade.load()
-            for y in range(S):
-                for x in range(S):
-                    edge = min(x, S - 1 - x) / 40
-                    fp[x, y] = int(255 * max(0, 1 - y / S) * min(1, edge))
-            rays.putalpha(Image.eval(Image.composite(rays.getchannel('A'), Image.new('L', (S, S), 0), fade), lambda v: v))
-            im.alpha_composite(rays)
-            d = ImageDraw.Draw(im)
-            # bubbles
-            for _ in range(26):
-                x, y = rnd.randint(10, 245), rnd.randint(10, 245)
-                r = rnd.choice((1, 1, 2, 2, 3))
-                d.ellipse([x - r, y - r, x + r, y + r], outline=(242, 217, 173, 145))
-                d.point([(x - r // 2, y - r // 2)], fill=(255, 255, 255, 200))
-            # floating particles (plankton)
-            for _ in range(60):
-                x, y = rnd.randrange(S), rnd.randrange(S)
-                d.point([(x, y)], fill=(243, 38, 62, rnd.randint(60, 150)))
-        elif face == 4:  # up: the surface seen from below, bright caustics
-            for y in range(S):
-                for x in range(S):
-                    dx, dy = (x - 128) / 128, (y - 128) / 128
-                    t = min(1, math.sqrt(dx * dx + dy * dy))
-                    px[x, y] = lerp((190, 250, 245), SURF, t) + (255,)
-            d = ImageDraw.Draw(im)
-            for _ in range(70):
-                x, y = rnd.randrange(S), rnd.randrange(S)
-                pts = [(x, y)]
-                for _ in range(3):
-                    x += rnd.randint(-18, 18); y += rnd.randint(-18, 18)
-                    pts.append((x, y))
-                d.line(pts, fill=(235, 255, 252, 90), width=2)
-            im = im.filter(ImageFilter.GaussianBlur(1.2))
-        else:  # down: the abyss
-            for y in range(S):
-                for x in range(S):
-                    dx, dy = (x - 128) / 128, (y - 128) / 128
-                    t = min(1, math.sqrt(dx * dx + dy * dy))
-                    px[x, y] = lerp((18, 7, 12), DEEP, t) + (255,)
-        save(im.convert('RGB'), GUI + 'title/background/panorama_%d.png' % face)
+    # A red broadcast moon and diffuse halo, kept to the right of the central UI.
+    halo = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    hd = ImageDraw.Draw(halo)
+    hd.ellipse((690, 7, 916, 233), fill=(205, 8, 39, 28))
+    hd.ellipse((724, 25, 884, 185), fill=(239, 13, 48, 38))
+    halo = halo.filter(ImageFilter.GaussianBlur(24))
+    scene = Image.alpha_composite(scene.convert('RGBA'), halo)
+    d = ImageDraw.Draw(scene)
+    d.ellipse((755, 38, 855, 138), fill=(125, 5, 26, 220), outline=(230, 21, 52, 210), width=2)
+    d.ellipse((767, 50, 843, 126), outline=(220, 13, 42, 170), width=2)
+    # A minimal radio-wave sigil inside the moon.
+    d.arc((780, 63, 830, 113), 205, 335, fill=(242, 217, 173, 180), width=2)
+    d.arc((790, 73, 820, 103), 205, 335, fill=(242, 217, 173, 180), width=2)
+    d.ellipse((802, 85, 808, 91), fill=CREAM + (210,))
+
+    # Gothic industrial skyline, with warm red windows and thin antenna spires.
+    rnd = random.Random(2602)
+    x = 0
+    while x < W:
+        bw = rnd.randint(24, 68)
+        top = rnd.randint(133, 190)
+        d.rectangle((x, top, x + bw, H), fill=(8, 4, 8, 255), outline=(55, 7, 19, 255), width=1)
+        if rnd.random() < 0.46:
+            cx = x + bw // 2
+            d.polygon([(cx - 5, top), (cx, top - rnd.randint(8, 24)), (cx + 5, top)], fill=(12, 4, 9, 255))
+            d.line((cx, top - 23, cx, top - 34), fill=(173, 8, 34, 220), width=1)
+            d.ellipse((cx - 2, top - 37, cx + 2, top - 33), fill=(243, 38, 62, 230))
+        for wy in range(top + 8, H - 8, 13):
+            for wx in range(x + 5, x + bw - 4, 10):
+                if rnd.random() < 0.33:
+                    d.rectangle((wx, wy, wx + 3, wy + 5), fill=(160, 11, 35, rnd.randint(110, 220)))
+        x += bw + rnd.randint(3, 9)
+
+    # Tall radio mast beneath the moon, with a little "ON AIR" sign.
+    d.line((803, 136, 803, 217), fill=(5, 4, 7, 255), width=5)
+    d.line((803, 137, 775, 216), fill=(5, 4, 7, 255), width=3)
+    d.line((803, 137, 831, 216), fill=(5, 4, 7, 255), width=3)
+    d.line((784, 183, 822, 183), fill=(5, 4, 7, 255), width=3)
+    d.line((789, 168, 817, 168), fill=(5, 4, 7, 255), width=2)
+    d.ellipse((797, 129, 809, 141), fill=(8, 4, 8, 255), outline=CRIMSON + (255,), width=2)
+    d.ellipse((801, 133, 805, 137), fill=CRIMSON + (255,))
+    d.polygon([(837, 180), (893, 166), (893, 187), (837, 201)], fill=(14, 5, 10, 255), outline=CRIMSON + (255,))
+    d.text((845, 177), "ON AIR", fill=(243, 38, 62, 255))
+
+    # Draw tentacles as ink-black, red-rimmed curves. No character silhouette:
+    # only the magical, eye-studded tendrils framing the menu like living cables.
+    def bezier(p0, p1, p2, p3, steps=90):
+        pts = []
+        for i in range(steps + 1):
+            t = i / steps
+            u = 1 - t
+            pts.append((
+                round(u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0]),
+                round(u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1]),
+            ))
+        return pts
+
+    paths = [
+        ((-35, 75), (80, -35), (165, 158), (282, 28), 23),
+        ((165, -28), (280, 88), (310, 188), (425, 110), 17),
+        ((475, -35), (525, 88), (680, -10), (735, 62), 21),
+        ((895, -30), (790, 55), (945, 112), (1060, 42), 24),
+        ((-40, 206), (95, 135), (130, 286), (280, 222), 26),
+        ((255, 276), (390, 184), (450, 280), (575, 222), 18),
+        ((585, 275), (700, 173), (785, 283), (885, 218), 24),
+        ((860, 244), (940, 176), (990, 218), (1065, 150), 20),
+    ]
+    for p0, p1, p2, p3, width in paths:
+        pts = bezier(p0, p1, p2, p3)
+        d.line(pts, fill=(113, 5, 26, 255), width=width + 5, joint='curve')
+        d.line(pts, fill=(5, 4, 7, 255), width=width, joint='curve')
+        # Tiny crimson edge glints give the ink forms an old screen-print finish.
+        d.line(pts[::4], fill=(174, 7, 32, 180), width=2, joint='curve')
+
+    # Distinct eye motifs embedded in the tentacles.
+    eyes = [
+        (84, 73, 22, 9), (228, 42, 18, 7), (525, 38, 20, 8),
+        (681, 221, 23, 9), (933, 82, 22, 9), (146, 221, 18, 7),
+        (406, 235, 18, 7), (980, 194, 20, 8),
+    ]
+    for cx, cy, ew, eh in eyes:
+        d.ellipse((cx-ew, cy-eh, cx+ew, cy+eh), fill=(4, 3, 6, 255), outline=CRIMSON + (255,), width=2)
+        d.ellipse((cx-ew*0.36, cy-eh*0.72, cx+ew*0.36, cy+eh*0.72), fill=(230, 15, 45, 255))
+        d.ellipse((cx-2, cy-eh*0.45, cx+2, cy+eh*0.45), fill=(4, 3, 6, 255))
+
+    # Antique tabletop radio in the far-left scene, deliberately away from the
+    # logo/button column. Its tuning dial echoes the O in the Radio wordmark.
+    d.rounded_rectangle((38, 151, 246, 243), radius=8, fill=(7, 4, 7, 255), outline=(170, 10, 34, 255), width=3)
+    d.rectangle((48, 163, 142, 231), fill=(14, 7, 11, 255), outline=(75, 12, 27, 255), width=2)
+    for yy in range(170, 225, 7):
+        d.line((54, yy, 135, yy), fill=(90, 9, 26, 210), width=1)
+    d.ellipse((155, 166, 231, 239), fill=(9, 5, 9, 255), outline=(211, 17, 45, 255), width=3)
+    d.ellipse((164, 175, 222, 233), outline=CREAM + (220,), width=2)
+    d.ellipse((176, 187, 210, 221), outline=(150, 10, 34, 255), width=2)
+    d.line((193, 204, 207, 187), fill=CREAM + (255,), width=2)
+    d.ellipse((189, 200, 197, 208), fill=CRIMSON + (255,))
+    d.line((61, 153, 61, 138), fill=(6, 4, 7, 255), width=3)
+    d.line((61, 138, 82, 130), fill=CRIMSON + (255,), width=2)
+    # Tiny credit etched along the lower edge, as requested.
+    d.text((30, 246), "written by o_xer", fill=(243, 38, 62, 255))
+
+    # Light scanlines and restrained print grain create a vintage broadcast feel.
+    overlay = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    od = ImageDraw.Draw(overlay)
+    for yy in range(0, H, 4):
+        od.line((0, yy, W, yy), fill=(0, 0, 0, 35), width=1)
+    for _ in range(1800):
+        gx, gy = rnd.randrange(W), rnd.randrange(H)
+        v = rnd.choice((30, 50, 70, 95))
+        od.point((gx, gy), fill=(255, 30, 55, v))
+    scene = Image.alpha_composite(scene, overlay)
+    scene = scene.convert('RGB').filter(ImageFilter.GaussianBlur(0.25))
+
+    # Four connected side faces from one scene, plus a matching crimson sky/abyss.
+    for face in range(4):
+        im = scene.crop((face * S, 0, (face + 1) * S, S))
+        save(im, GUI + 'title/background/panorama_%d.png' % face)
+
+    # Up face: an antique broadcast halo seen through smoky crimson clouds.
+    up = Image.new('RGBA', (S, S), (10, 5, 10, 255))
+    up_px = up.load()
+    for y in range(S):
+        for x in range(S):
+            dx, dy = (x - 128) / 128, (y - 128) / 128
+            t = min(1, math.sqrt(dx * dx + dy * dy))
+            up_px[x, y] = lerp((105, 7, 27), (5, 4, 7), t) + (255,)
+    ud = ImageDraw.Draw(up)
+    ud.ellipse((54, 54, 202, 202), outline=(198, 12, 41, 180), width=3)
+    ud.ellipse((76, 76, 180, 180), outline=(242, 217, 173, 95), width=1)
+    for a in range(0, 360, 15):
+        rad = math.radians(a)
+        x1, y1 = 128 + math.cos(rad)*68, 128 + math.sin(rad)*68
+        x2, y2 = 128 + math.cos(rad)*76, 128 + math.sin(rad)*76
+        ud.line((x1, y1, x2, y2), fill=(243, 38, 62, 170), width=2)
+    save(up, GUI + 'title/background/panorama_4.png')
+
+    # Down face: near-black broadcast static, with faint red signal rings.
+    down = Image.new('RGBA', (S, S), (5, 4, 7, 255))
+    dd = ImageDraw.Draw(down)
+    for radius, alpha in ((40, 45), (72, 35), (104, 25)):
+        dd.ellipse((128-radius, 128-radius, 128+radius, 128+radius),
+                   outline=(170, 7, 33, alpha), width=2)
+    for _ in range(180):
+        xx, yy = rnd.randrange(S), rnd.randrange(S)
+        dd.point((xx, yy), fill=(150, 8, 34, rnd.randint(20, 75)))
+    save(down, GUI + 'title/background/panorama_5.png')
     save(Image.new('RGBA', (1, 1), (0, 0, 0, 0)), GUI + 'title/background/panorama_overlay.png')
-
 
 SPLASHES = """Now with observers!
 Railguns approved!
