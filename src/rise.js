@@ -796,7 +796,7 @@
 		if (titleCanvas) {
 			var tb = titleCanvas.getBoundingClientRect();
 			radioBrand.style.left = Math.max(8, tb.right - 178) + 'px';
-			radioBrand.style.top = Math.max(8, tb.bottom - 58) + 'px';
+			radioBrand.style.top = Math.max(8, tb.top + 12) + 'px';
 		}
 		radioBrand.style.display = screen.name === 'title' && !isOpen ? 'flex' : 'none';
 		placeBtn(btnVideo, screen.name === 'options' ? screen.rects.video : null);
@@ -929,6 +929,7 @@
 				cmdRow('TNT Lag Fix', 'Explosions drop far fewer items (those items are what lag after big blasts). Also set Particles to Minimal in Video Settings.', [['Apply', cmd(['/gamerule tnt_explosion_drop_decay true', '/gamerule block_explosion_drop_decay true'], 'TNT Lag Fix')]])
 			] }
 		] },
+		{ id: 'skins', name: 'Skins', skins: true, groups: [] },
 		{ id: 'misc', name: 'Misc', groups: [
 			{ name: 'LOOKS (RESTART)', items: [
 				modBool('glint', 'Enchant Glint Colour', 'Changes the shimmer on enchanted items and armour.', { restart: true, preview: 'glint', opts: [
