@@ -1,4 +1,4 @@
-name: Build and deploy Radio Client to GitHub Pages
+name: Build and deploy Radio Client to radio-client.github.io
 
 on:
   workflow_dispatch:
@@ -18,20 +18,15 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: github-pages
+  group: radio-client-pages
   cancel-in-progress: true
 
 jobs:
-  inspect-html:
+  build-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    timeout-minutes: 20
     steps:
       - name: Check out Radio Client branch
         uses: actions/checkout@v4
@@ -62,34 +57,32 @@ jobs:
         run: python radio/check_theme_assets.py
       - name: Run the full Radio Client build
         run: python build.py
-      - name: Prepare GitHub Pages site
+      - name: Prepare website files
         run: |
           test -s dist/web/index.html
           test -s dist/web/client/index.html
           test -s dist/web/client/version.txt
           test -d dist/web/client/payload
-          # Project Pages live below /radio-client/, so resolve /client/ relative
-          # to the deployed homepage instead of the domain root.
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("dist/web/index.html")
-          html = path.read_text(encoding="utf-8")
-          old = 'const clientPath="/client/";'
-          new = 'const clientPath=new URL("client/",window.location.href).pathname;'
-          if old not in html:
-              raise SystemExit("Could not find launcher clientPath setting")
-          path.write_text(html.replace(old, new, 1), encoding="utf-8")
-          PY
+          # The custom domain is served from the root, so /client/ is absolute.
           touch dist/web/.nojekyll
           echo "Homepage preserved; playable client built under /client/."
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+      - name: Check out the GitHub Pages repository
+        uses: actions/checkout@v4
         with:
-          enablement: true
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist/web
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          repository: radio-client/radio-client.github.io
+          ref: main
+          token: ${{ secrets.RADIO_CLIENT_PAGES_TOKEN }}
+          path: pages-site
+      - name: Publish built website
+        run: |
+          rsync -a --delete --exclude='.git' dist/web/ pages-site/
+          cd pages-site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "No website changes to publish."
+            exit 0
+          fi
+          git add -A
+          git commit -m "Deploy Radio Client website"
+          git push origin main
