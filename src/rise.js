@@ -1,7 +1,7 @@
 /*
- * Rise Client 2 — layer for Eaglercraft 26.2 (Wasm-GC).
+ * Radio Client — custom interface layer for Eaglercraft 26.2.
  *
- *  - Rise Video Settings (ShadowNet/Sodium layout, ocean theme) replaces the
+ *  - Radio Video Settings (ShadowNet/Sodium layout, crimson theme) replaces the
  *    game's "Video Settings..." button, and a "Mods" button replaces the title
  *    screen's "Credits" button. Both are pixel-matched overlays that only show
  *    on those screens: Rise reads the finished frame (menu text is matched
@@ -62,7 +62,7 @@
 		zoom: true, zoomLevel: 3, fullbright: false, fullbrightOn: false, toggleSprint: false, toggleSneak: false,
 		lowFire: false, clearWater: false, noPumpkin: false, entityCull: false, clearLag: false,
 		crosshairSize: 1, fullbrightStrength: 'medium', fpsCorner: 'left', clearLagMinutes: 3, cullDistance: 0.5,
-		skins: {}, shader: false, shaderStyle: 'vibrant', glowOres: false, glint: false, glintColor: 'turquoise', cleanGlass: false,
+		skins: {}, shader: false, shaderStyle: 'vibrant', glowOres: false, glint: false, glintColor: 'red', cleanGlass: false,
 		noHurtTilt: false, noFovFx: false, noWobble: false, noLightning: false,
 		batterySaver: true, batteryCap: lowEnd ? 30 : 0
 	};
@@ -843,7 +843,7 @@
 				opt('fpsCorner', 'Position', [['left', 'Top Left'], ['right', 'Top Right']], 'Which corner the counter sits in. Top right is where the game shows tutorial and advancement pop-ups.')] }),
 			modBool('crosshair', 'Custom Crosshair', 'Swaps the vanilla crosshair for your own shape and colour. Hiding the vanilla one takes a restart.', { restart: true, opts: [
 				opt('crosshairStyle', 'Style', [['cross', 'Cross'], ['dot', 'Dot'], ['circle', 'Circle'], ['plus', 'Plus + Dot']], 'Shape.'),
-				opt('crosshairColor', 'Colour', [['#f2d9ad', 'Turquoise'], ['#1f9bff', 'Ocean'], ['#ffffff', 'White'], ['#ff5470', 'Red'], ['#9dff5c', 'Lime'], ['#f2d9ad', 'Gold']], 'Colour.'),
+				opt('crosshairColor', 'Colour', [['#f3263e', 'Crimson'], ['#f2d9ad', 'Warm Cream'], ['#ffffff', 'White'], ['#ff5470', 'Rose'], ['#9dff5c', 'Lime']], 'Colour.'),
 				opt('crosshairSize', 'Size', [[0.75, 'Small'], [1, 'Normal'], [1.5, 'Big']], 'Size.')] })
 		] }] },
 		{ id: 'gameplay', name: 'Gameplay', groups: [{ name: 'GAMEPLAY', items: [
@@ -888,7 +888,7 @@
 		{ id: 'misc', name: 'Misc', groups: [
 			{ name: 'LOOKS (RESTART)', items: [
 				modBool('glint', 'Enchant Glint Colour', 'Changes the shimmer on enchanted items and armour.', { restart: true, preview: 'glint', opts: [
-					opt('glintColor', 'Colour', [['turquoise', 'Turquoise'], ['red', 'Red'], ['gold', 'Gold'], ['rainbow', 'Rainbow']], 'Glint colour.', { restart: true })] }),
+					opt('glintColor', 'Colour', [['red', 'Crimson'], ['gold', 'Gold'], ['rainbow', 'Rainbow']], 'Glint colour.', { restart: true })] }),
 				modBool('glowOres', 'Glowing Ores', 'Ore blocks glow at full brightness, so you can spot them in dark caves. They do not light up the area around them.', { restart: true }),
 				modBool('cleanGlass', 'Clean Glass', 'Glass keeps only its thin frame, no streaks, so windows look clear.', { restart: true }),
 				modBool('lowFire', 'Low Fire', 'Shrinks the fire on your screen (and fire blocks) so you can see.', { restart: true }),
@@ -1229,7 +1229,7 @@
 			} else if (kind === 'glint') {
 				box.appendChild(img(PREVIEWS.icons.glint, 96));
 				var g = el('div', 'glint'), b = 'url(data:image/png;base64,' + PREVIEWS.icons.glint + ')';
-				g.style.backgroundImage = dataPng(PREVIEWS.glint[valueOf({ mod: 'glintColor' })] || PREVIEWS.glint.turquoise);
+				g.style.backgroundImage = dataPng(PREVIEWS.glint[valueOf({ mod: 'glintColor' })] || PREVIEWS.glint.red);
 				g.style.webkitMaskImage = b; g.style.maskImage = b;
 				box.appendChild(g);
 			} else if (kind === 'shader' || kind === 'crosshair' || kind === 'fullbright') {
