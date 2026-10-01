@@ -139,25 +139,6 @@ def radio_tint_button_png(data, disabled=False):
     image.save(out, format='PNG', optimize=True)
     return out.getvalue()
 
-def radio_clean_panorama_face(data):
-    """Replace the panorama face carrying the old creator mark with a clean starfield."""
-    import io, random
-    from PIL import Image, ImageChops, ImageDraw
-    with Image.open(io.BytesIO(data)) as src:
-        image = src.convert('RGBA')
-    # Keep the existing sky palette and lighting, but shift the stars so this face
-    # does not duplicate the exact same pattern as panorama_0.
-    image = ImageChops.offset(image, 67, 0)
-    draw = ImageDraw.Draw(image, 'RGBA')
-    rng = random.Random(0x52414449)
-    for _ in range(28):
-        x, y = rng.randrange(image.width), rng.randrange(image.height)
-        alpha = rng.randrange(130, 235)
-        radius = 1 if rng.random() < 0.82 else 2
-        draw.ellipse((x, y, x + radius, y + radius), fill=(220, 250, 255, alpha))
-    out = io.BytesIO()
-    image.save(out, format='PNG', optimize=True)
-    return out.getvalue()
 
 def patch_assets(epk_bytes):
     import json
@@ -188,11 +169,6 @@ def patch_assets(epk_bytes):
                 'assets/minecraft/textures/gui/sprites/widget/button_highlighted.png',
                 'assets/minecraft/textures/gui/sprites/widget/button_disabled.png'):
             d = radio_tint_button_png(d, disabled=n.endswith('button_disabled.png'))
-        if t == 'FILE' and n == 'assets/minecraft/textures/gui/title/background/panorama_4.png':
-            source = theme.get('assets/minecraft/textures/gui/title/background/panorama_0.png')
-            if source is not None:
-                d = radio_clean_panorama_face(source)
-                seen.add(n)
         if t == 'FILE' and n == 'assets/minecraft/font/unifont.zip':
             before = len(d); d = trim_unifont(d)
             print('unifont: %.1f MB -> %.2f MB' % (before / 1e6, len(d) / 1e6))
