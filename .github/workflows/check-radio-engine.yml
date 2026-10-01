@@ -1,4 +1,4 @@
-name: Check Eagler 26.2 HTML compatibility
+name: Build and deploy Radio Client to GitHub Pages
 
 on:
   workflow_dispatch:
@@ -18,11 +18,20 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
 
 jobs:
   inspect-html:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Check out Radio Client branch
         uses: actions/checkout@v4
@@ -53,10 +62,32 @@ jobs:
         run: python radio/check_theme_assets.py
       - name: Run the full Radio Client build
         run: python build.py
-      - name: Verify web build stays separate from the homepage
+      - name: Prepare GitHub Pages site
         run: |
           test -s dist/web/index.html
           test -s dist/web/client/index.html
           test -s dist/web/client/version.txt
           test -d dist/web/client/payload
-          echo "Homepage preserved; game web build generated under dist/web/client/"
+          # Project Pages live below /radio-client/, so resolve /client/ relative
+          # to the deployed homepage instead of the domain root.
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("dist/web/index.html")
+          html = path.read_text(encoding="utf-8")
+          old = 'const clientPath="/client/";'
+          new = 'const clientPath=new URL("client/",window.location.href).pathname;'
+          if old not in html:
+              raise SystemExit("Could not find launcher clientPath setting")
+          path.write_text(html.replace(old, new, 1), encoding="utf-8")
+          PY
+          touch dist/web/.nojekyll
+          echo "Homepage preserved; playable client built under /client/."
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/web
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
