@@ -963,7 +963,6 @@
 			] },
 			{ name: 'ABOUT', items: [{ type: 'about', label: 'Radio Client ' + VERSION, desc: 'Eaglercraft 26.2 by o_xer, based on EaglercraftX 1.8 by lax1dude. Minecraft is (c) Mojang.' }] }
 		] },
-		{ id: 'skins', name: 'Skins', skins: true, groups: [] }
 	];
 
 	// ------------------------------------------------------------ panels
@@ -1494,7 +1493,7 @@
 			if (!inField) e.stopImmediatePropagation();
 			return;
 		}
-		if (isRShift(e) && !e.repeat && gameReady()) { e.preventDefault(); e.stopImmediatePropagation(); openPanel('video'); return; }
+		if (isRShift(e) && !e.repeat && gameReady()) { e.preventDefault(); e.stopImmediatePropagation(); openPanel('mods'); return; }
 		if (!document.pointerLockElement) { pendingCheck = true; boostUntil = performance.now() + 2500; return; }
 		var c = codeOf(e);
 		keysDown[c] = true;
