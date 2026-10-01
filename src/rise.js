@@ -929,7 +929,6 @@
 				cmdRow('TNT Lag Fix', 'Explosions drop far fewer items (those items are what lag after big blasts). Also set Particles to Minimal in Video Settings.', [['Apply', cmd(['/gamerule tnt_explosion_drop_decay true', '/gamerule block_explosion_drop_decay true'], 'TNT Lag Fix')]])
 			] }
 		] },
-		{ id: 'skins', name: 'Skins', skins: true, groups: [] },
 		{ id: 'misc', name: 'Misc', groups: [
 			{ name: 'LOOKS (RESTART)', items: [
 				modBool('glint', 'Enchant Glint Colour', 'Changes the shimmer on enchanted items and armour.', { restart: true, preview: 'glint', opts: [
@@ -952,6 +951,7 @@
 			] },
 			{ name: 'ABOUT', items: [{ type: 'about', label: 'Radio Client ' + VERSION, desc: 'Eaglercraft 26.2 by o_xer, based on EaglercraftX 1.8 by lax1dude. Minecraft is (c) Mojang.' }] }
 		] },
+		{ id: 'skins', name: 'Skins', skins: true, groups: [] },
 	];
 
 	// ------------------------------------------------------------ panels
