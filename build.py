@@ -188,8 +188,7 @@ def main():
         # Leave the rest of the client build usable and show a notice if its menu item is clicked.
         bp = ''
         print('BlueprintMod not found; blueprint feature will be unavailable in this build')
-    rise = (rise.replace('%TITLE_ART%', base64.b64encode(open(os.path.join(ex, '8FAF8718-6A05-40EF-BDED-47FE7500021A.png'), 'rb').read()).decode())
-                .replace('%GLYPHS%', open(os.path.join(ex, 'glyphs.json')).read())
+    rise = (rise.replace('%GLYPHS%', open(os.path.join(ex, 'glyphs.json')).read())
                 .replace('%FONT%', base64.b64encode(open(os.path.join(ex, 'rise-font.ttf'), 'rb').read()).decode())
                 .replace('%PACKS%', open(os.path.join(ex, 'packs.json')).read())
                 .replace('%PREVIEWS%', open(os.path.join(ex, 'previews.json')).read())
