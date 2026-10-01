@@ -1,5 +1,5 @@
-"""Generates the Rise Client theme: logo, buttons, widgets, starfield panorama,
-loading-screen logo and menu backgrounds.  Output: theme/<asset path>.
+"""Generates the Radio Client theme: logo, buttons, widgets, vintage occult panorama,
+loading-screen logo and menu backgrounds. Output: theme/<asset path>.
 
 Run with the local venv:  .venv/bin/python gen_textures.py
 """
@@ -508,7 +508,7 @@ def make_panorama():
     d.line((61, 153, 61, 138), fill=(6, 4, 7, 255), width=3)
     d.line((61, 138, 82, 130), fill=CRIMSON + (255,), width=2)
     # Tiny credit etched along the lower edge, as requested.
-    d.text((30, 246), "written by o_xer", fill=(243, 38, 62, 255))
+    d.text((30, 239), "written by o_xer", fill=(243, 38, 62, 255))
 
     # Light scanlines and restrained print grain create a vintage broadcast feel.
     overlay = Image.new('RGBA', (W, H), (0, 0, 0, 0))
