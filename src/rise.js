@@ -1214,7 +1214,7 @@
 			bar.appendChild(ch);
 		});
 		list.appendChild(bar);
-		list.appendChild(el('div', 'hint', 'Click a skin to wear it (one per item), click again to take it off. Right-click for a closer look. Skins only change how things look. Press Apply & Restart when you are done.'));
+		list.appendChild(el('div', 'hint', 'Item cosmetics: click a tile to equip one skin per item group, or click again to remove it. Right-click for details. Choose your player skin above. Press Apply & Restart when you are done.'));
 		var grid = el('div', 'grid');
 		list.appendChild(grid);
 		function fill() {
