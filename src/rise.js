@@ -62,7 +62,7 @@
 		zoom: true, zoomLevel: 3, fullbright: false, fullbrightOn: false, toggleSprint: false, toggleSneak: false,
 		lowFire: false, clearWater: false, noPumpkin: false, entityCull: false, clearLag: false,
 		crosshairSize: 1, fullbrightStrength: 'medium', fpsCorner: 'left', clearLagMinutes: 3, cullDistance: 0.5,
-		skins: {}, shader: false, shaderStyle: 'vibrant', glowOres: false, glint: false, glintColor: 'red', cleanGlass: false,
+		skins: {}, playerSkin: 'alastor', shader: false, shaderStyle: 'vibrant', glowOres: false, glint: false, glintColor: 'red', cleanGlass: false,
 		noHurtTilt: false, noFovFx: false, noWobble: false, noLightning: false,
 		batterySaver: true, batteryCap: lowEnd ? 30 : 0
 	};
@@ -149,6 +149,9 @@
 		if (mods.cleanGlass) w.push('rise_clean_glass');
 		var sk = mods.skins || {};
 		Object.keys(sk).forEach(function (g) { if (sk[g]) w.push('rise_skin_' + sk[g]); });
+		// The Alastor texture replaces the classic wide-arm Steve fallback skin.
+		// A skin supplied by a multiplayer server can still take precedence.
+		if (mods.playerSkin === 'alastor') w.push('rise_player_alastor');
 		if (mods.glint) w.push('rise_glint_' + mods.glintColor);
 		return w.filter(function (p) { return PACKS[p]; });
 	}
@@ -1187,6 +1190,21 @@
 		setValue({ mod: 'skins', restart: true }, cur);
 	}
 	function renderSkins(list) {
+		list.appendChild(el('div', 'gh', 'PLAYER SKIN'));
+		var playerPreview = el('div', 'hint');
+		playerPreview.style.cssText = 'display:flex;align-items:center;gap:14px;padding:10px 12px 12px';
+		var playerTexture = SKINS.packs.rise_player_alastor['assets/minecraft/textures/entity/player/wide/steve.png'];
+		var playerImage = img(playerTexture, 96);
+		playerImage.style.cssText = 'width:96px;height:96px;image-rendering:pixelated;border:1px solid #9b1c2a;background:#0b0608';
+		playerPreview.appendChild(playerImage);
+		var playerCopy = el('div');
+		playerCopy.appendChild(el('div', null, 'Alastor — Steve model'));
+		playerCopy.appendChild(el('div', null, '64×64 skin · classic wide arms'));
+		playerCopy.appendChild(el('div', null, 'Server-provided player skins may override this fallback texture.'));
+		playerCopy.style.cssText = 'display:flex;flex-direction:column;gap:6px;line-height:1.3;color:#b99aa1;font-size:12px';
+		playerPreview.appendChild(playerCopy);
+		list.appendChild(playerPreview);
+		list.appendChild(renderRow({ mod: 'playerSkin', label: 'Player Skin', type: 'cycle', values: [['alastor', 'Alastor (Default)'], ['steve', 'Default Steve']], desc: 'Uses the selected skin as the classic wide-arm Steve fallback. Changes apply after restart.', restart: true }));
 		var bar = el('div', 'sbar');
 		var q = el('input'); q.placeholder = 'Search skins...'; q.value = skinFilter.q; q.spellcheck = false;
 		bar.appendChild(q);
