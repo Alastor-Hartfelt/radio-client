@@ -51,10 +51,10 @@ jobs:
           sys.path.insert(0, '.')
           from epk import read_epk
           html = Path('/tmp/eagler-26.2.html').read_text(encoding='utf-8', errors='replace')
-          for term in ('Default Steve', 'Default Alex', 'Tennis Steve', 'Tuxedo Steve', 'Athlete Steve', 'Cyclist Steve', 'Boxer Steve', 'Prisoner Steve'):
+          for term in ('Default Steve', 'Default Alex', 'Tennis Steve', 'Tuxedo Steve', 'Athlete Steve', 'Cyclist Steve', 'Boxer Steve', 'Prisoner Steve', '01.default_steve.png', 'assets/eagler/skins', 'default_steve', 'skinPreset'):
               positions = [m.start() for m in re.finditer(re.escape(term), html, re.I)]
               print('HTML TEXT', repr(term), 'occurrences=', len(positions))
-              for p in positions[:2]: print('  ', html[max(0,p-100):p+180].replace('\\n',' ')[:300])
+              for p in positions[:3]: print('  ', html[max(0,p-160):p+260].replace('\\n',' ')[:420])
           m = re.search(r'(<script type="application/octet-stream" id="eag-inline-assets" data-size=")(\d+)(">)(.*?)(</script>)', html, re.S)
           if m:
               epk = base64.b64decode(re.sub(r'\s', '', m.group(4)))
@@ -62,6 +62,16 @@ jobs:
               names = [n for t,n,d in files if t == 'FILE' and ('skin' in n.lower() or 'cape' in n.lower())]
               print('EPK skin/cape paths:', len(names))
               for n in names[:120]: print('  ', n)
+              for t,n,d in files:
+                  if t == 'FILE' and n.endswith('en_us.json') and ('minecraft/lang' in n or 'eagler' in n):
+                      try:
+                          import json
+                          lang = json.loads(d.decode('utf-8'))
+                          keys = [(k,v) for k,v in lang.items() if any(w in k.lower() for w in ('skin','cape','eagler'))]
+                          if keys:
+                              print('LANG FILE', n, 'matching keys=', len(keys))
+                              for k,v in keys[:100]: print('  ', repr(k), '=', repr(v))
+                      except Exception as e: print('LANG parse error', n, str(e))
               for term in (b'Default Steve', b'Default Alex', b'Tennis Steve', b'Tuxedo Steve'):
                   print('EPK raw label', term.decode(), epk.find(term))
           else: print('Could not locate inline EPK block')
