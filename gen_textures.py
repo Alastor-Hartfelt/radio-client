@@ -596,18 +596,64 @@ if __name__ == '__main__':
 
 
 def make_extras():
-    """Loading-screen logo and favicon for the HTML shell (theme_extra/)."""
+    """Generate the loading-stage Radio Client lockup and matching favicon."""
     ex = os.path.join(ROOT, 'theme_extra')
     os.makedirs(ex, exist_ok=True)
-    radio = radio_wordmark('RADIO', cell=18, depth=8, outline=5)
-    client = wordmark('CLIENT', cell=7, depth=3, outline=3)
-    W = max(radio.width, client.width)
-    im = Image.new('RGBA', (W, radio.height + client.height - 10), (0, 0, 0, 0))
-    im.alpha_composite(radio, ((W - radio.width) // 2, 0))
-    im.alpha_composite(client, ((W - client.width) // 2, radio.height - 10))
-    fit_into((1024, 256), im, (0, 0, 1024, 256)).save(os.path.join(ex, 'boot_logo.png'), optimize=True)
-    r = wordmark('R', cell=8, depth=3, outline=3)
-    fit_into((64, 64), r, (2, 2, 60, 60)).save(os.path.join(ex, 'icon.png'), optimize=True)
 
+    # Keep the analog-dial wordmark, but give the loading screen the little
+    # vintage broadcast-tower emblem that now anchors Radio Client's identity.
+    radio = radio_wordmark('RADIO', cell=10, depth=4, outline=3)
+    client = wordmark('CLIENT', cell=7, depth=3, outline=3)
+    word_w = max(radio.width, client.width)
+    word_h = radio.height + client.height - 7
+    word = Image.new('RGBA', (word_w, word_h), (0, 0, 0, 0))
+    word.alpha_composite(radio, ((word_w - radio.width) // 2, 0))
+    word.alpha_composite(client, ((word_w - client.width) // 2, radio.height - 7))
+
+    # Transparent emblem canvas. The red broadcast arcs and warm-cream mast
+    # echo the Lucide-style radio tower mark, redrawn to fit the pixel logo.
+    emblem = Image.new('RGBA', (156, 174), (0, 0, 0, 0))
+    glow = Image.new('RGBA', emblem.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.arc((16, 4, 140, 128), 205, 335, fill=(243, 38, 62, 150), width=8)
+    gd.arc((31, 18, 125, 112), 205, 335, fill=(243, 38, 62, 170), width=7)
+    gd.arc((48, 33, 108, 93), 205, 335, fill=(242, 217, 173, 170), width=5)
+    glow = glow.filter(ImageFilter.GaussianBlur(5))
+    emblem.alpha_composite(glow)
+    ed = ImageDraw.Draw(emblem)
+    crimson = (243, 38, 62, 255)
+    deep = (76, 6, 23, 255)
+    cream = (242, 217, 173, 255)
+    # Signal arcs, with a dark under-stroke for a printed, vintage look.
+    for box, width in [((16, 4, 140, 128), 5), ((31, 18, 125, 112), 5), ((48, 33, 108, 93), 4)]:
+        ed.arc(box, 205, 335, fill=deep, width=width + 3)
+        ed.arc(box, 205, 335, fill=crimson if width != 4 else cream, width=width)
+    # Tall mast and crossed feet, with black/crimson shadow then ivory highlight.
+    ed.line((78, 67, 47, 157), fill=deep, width=13)
+    ed.line((78, 67, 109, 157), fill=deep, width=13)
+    ed.line((47, 157, 109, 157), fill=deep, width=13)
+    ed.line((78, 67, 47, 157), fill=cream, width=5)
+    ed.line((78, 67, 109, 157), fill=cream, width=5)
+    ed.line((47, 157, 109, 157), fill=crimson, width=5)
+    ed.line((60, 119, 96, 119), fill=deep, width=10)
+    ed.line((60, 119, 96, 119), fill=crimson, width=4)
+    ed.ellipse((68, 56, 88, 76), fill=deep, outline=crimson, width=3)
+    ed.ellipse((73, 61, 83, 71), fill=cream)
+    # Tiny base plate gives the mark a deliberate, old radio-station insignia feel.
+    ed.rounded_rectangle((36, 159, 120, 170), radius=3, fill=deep, outline=crimson, width=2)
+    ed.line((45, 164, 111, 164), fill=cream, width=1)
+
+    gap = 28
+    total_w = emblem.width + gap + word.width
+    total_h = max(emblem.height, word.height)
+    lockup = Image.new('RGBA', (total_w, total_h), (0, 0, 0, 0))
+    lockup.alpha_composite(emblem, (0, (total_h - emblem.height) // 2))
+    lockup.alpha_composite(word, (emblem.width + gap, (total_h - word.height) // 2))
+    fit_into((1024, 256), lockup, (55, 12, 914, 232)).save(
+        os.path.join(ex, 'boot_logo.png'), optimize=True)
+
+    # Keep the small favicon aligned with the same radio identity.
+    r = radio_wordmark('R', cell=8, depth=3, outline=3)
+    fit_into((64, 64), r, (2, 2, 60, 60)).save(os.path.join(ex, 'icon.png'), optimize=True)
 
 make_extras()
