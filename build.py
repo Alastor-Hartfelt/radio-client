@@ -111,6 +111,10 @@ def patch_assets(epk_bytes):
     alastor_skin = base64.b64decode(ALASTOR_SKIN_B64, validate=True)
     if alastor_skin[:8] != b'\x89PNG\r\n\x1a\n' or alastor_skin[16:24] != b'\x00\x00\x00@\x00\x00\x00@':
         raise ValueError('Alastor skin must be a valid 64x64 PNG')
+    import io
+    from PIL import Image
+    with Image.open(io.BytesIO(alastor_skin)) as skin_image:
+        skin_image.verify()
     seen = set()
     out = []
     recipes, dropped = [], 0
