@@ -895,8 +895,8 @@
 				opt('zoomLevel', 'Zoom Level', [[2, '2x'], [3, '3x'], [4, '4x'], [6, '6x']], 'How far it zooms when you first press C.')] }),
 			modBool('fullbright', 'Fullbright', 'Press K while playing to light up caves and nights.', { opts: [
 				opt('fullbrightStrength', 'Strength', [['soft', 'Soft'], ['medium', 'Medium'], ['max', 'Max']], 'How bright the dark parts get.')] }),
-			modBool('toggleSprint', 'Toggle Sprint', 'Tap sprint once instead of holding it. Takes a restart.', { restart: true }),
-			modBool('toggleSneak', 'Toggle Sneak', 'Tap sneak once instead of holding it. Takes a restart.', { restart: true }),
+			modBool('toggleSprint', 'Toggle Sprint', 'Tap sprint once instead of holding it. Works instantly while you play.'),
+			modBool('toggleSneak', 'Toggle Sneak', 'Tap sneak once instead of holding it. Works instantly while you play.'),
 			cmdRow('Hitboxes', 'Shows the boxes around mobs and items (same as F3+B).', [['Toggle', chord('b', 'KeyB', 66, 'Hitboxes')]]),
 			cmdRow('Chunk Borders', 'Shows the lines between chunks (same as F3+G). Great for redstone and farms.', [['Toggle', chord('g', 'KeyG', 71, 'Chunk borders')]]),
 			{ type: 'blueprint', label: 'Blueprints', desc: 'Pick a build and follow it layer by layer. [ and ] change layer, B hides it.' }
@@ -1353,7 +1353,7 @@
 	}
 
 	// ------------------------------------------------------------ mods runtime
-	var keysDown = {}, clicksL = [], clicksR = [], persp = 0, hideGui = false, zooming = false, zoom = 3;
+	var keysDown = {}, clicksL = [], clicksR = [], persp = 0, hideGui = false, zooming = false, zoom = 3, toggleSprintHeld = false, toggleSneakHeld = false;
 	function gameFrame() { return document.getElementById('game_frame'); }
 	function ensureFullbrightFilter() {
 		if (fbSvg) return;
@@ -1399,6 +1399,11 @@
 	}
 	var hudBuilt = '';
 	function applyMods() {
+		// Toggle Sprint/Sneak are implemented at the input boundary so they can be
+		// changed while the 26.2 game is already running. We deliberately do not
+		// wait for the pre-boot options pass for these two gameplay mods.
+		if (!mods.toggleSprint) { if (toggleSprintHeld) { keyEvent('keyup', 'Control', 'ControlLeft', 17); toggleSprintHeld = false; } }
+		if (!mods.toggleSneak) { if (toggleSneakHeld) { keyEvent('keyup', 'Shift', 'ShiftLeft', 16); toggleSneakHeld = false; } }
 		var sig = [mods.shader, mods.shaderStyle, mods.keystrokes, mods.cps, mods.fps, mods.fpsCorner, mods.crosshair, mods.crosshairStyle, mods.crosshairColor, mods.crosshairSize].join();
 		if (sig !== hudBuilt) {
 			hudBuilt = sig;
@@ -1490,6 +1495,20 @@
 		keysDown[c] = true;
 		if (c === 'F1' && !e.repeat) hideGui = !hideGui;
 		if (c === 'F5' && !e.repeat) persp = (persp + 1) % 3;
+		// Live toggle sprint/sneak. The real 26.2 input system still receives the
+		// synthetic key state, but the user only has to tap the key once.
+		if (mods.toggleSprint && !e.repeat && (c === 'ControlLeft' || c === 'ControlRight')) {
+			e.preventDefault(); e.stopImmediatePropagation();
+			toggleSprintHeld = !toggleSprintHeld;
+			keyEvent(toggleSprintHeld ? 'keydown' : 'keyup', 'Control', c, 17);
+			return;
+		}
+		if (mods.toggleSneak && !e.repeat && (c === 'ShiftLeft' || c === 'ShiftRight')) {
+			e.preventDefault(); e.stopImmediatePropagation();
+			toggleSneakHeld = !toggleSneakHeld;
+			keyEvent(toggleSneakHeld ? 'keydown' : 'keyup', 'Shift', c, 16);
+			return;
+		}
 		if (mods.zoom && c === 'KeyC') {
 			e.stopImmediatePropagation(); e.preventDefault();
 			if (!zooming) { zooming = true; zoom = mods.zoomLevel; applyFrameEffects(); }
