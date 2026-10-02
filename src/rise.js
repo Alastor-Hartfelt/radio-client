@@ -23,6 +23,8 @@
 	var PENDING_KEY = 'rise.pending';
 	var GLYPHS = %GLYPHS%;
 	var FONT_B64 = '%FONT%';
+	// Live 26.2 engine bridge; falls back cleanly on the existing compiled client.
+	var engine = window.__radioEngine || null;
 	var PACKS = %PACKS%;
 	var BLUEPRINT_SRC = %BLUEPRINT%;
 	var PREVIEWS = %PREVIEWS%;
@@ -1006,6 +1008,10 @@
 			if (it.mod === 'crosshair') { mods.crosshair = v; saveMods(); applyMods(); } // overlay is instant; only the vanilla hide waits
 		} else {
 			staged[it.key] = v;
+			if (engine && engine.set && engine.set(it.key, v)) {
+				// Keep the wrapper's HUD/screen detector in sync with the live engine.
+				if (it.key === 'guiScale') { guiScaleOpt = parseInt(v, 10) || 0; applyScale(); }
+			}
 			if (cardEl && cardEl._pic) cardEl._pic._draw();
 			if (['renderClouds', 'particles', 'ao', 'biomeBlendRadius', 'entityShadows', 'cutoutLeaves', 'improvedTransparency', 'mipmapLevels', 'textureFiltering', 'renderDistance', 'simulationDistance'].indexOf(it.key) >= 0) staged.graphicsPreset = q('custom');
 		}
@@ -1026,7 +1032,13 @@
 		stagedRise = {}; stagedMods = {};
 		saveCfg(); saveMods();
 		var pend = {};
-		for (var key in staged) if (staged[key] !== current.map[key]) pend[key] = staged[key];
+		for (var key in staged) {
+			if (staged[key] === current.map[key]) continue;
+			// If the real 26.2 bridge is present, OptionInstance.set() has already
+			// applied this change to the running client. Otherwise retain the old
+			// pre-boot path for the next launch.
+			if (!(engine && engine.set && engine.set(key, staged[key]))) pend[key] = staged[key];
+		}
 		if (Object.keys(pend).length) writeJSON(PENDING_KEY, pend);
 		if (restart) { toast('Restarting Radio Client…'); setTimeout(function () { location.reload(); }, 450); }
 	}
@@ -1041,11 +1053,11 @@
 			t.onclick = function () { page[which] = p.id; tabs.querySelectorAll('.tab').forEach(function (x) { x.classList.toggle('on', x === t); }); renderList(); };
 			tabs.appendChild(t);
 		});
-		var note = el('div', 'note', 'Changes are applied to the running client when you press Apply.');
+		var note = el('div', 'note', 'Changes are applied live when the 26.2 engine bridge is available; otherwise they take effect on the next launch.');
 		var bar = el('div', 'bar');
 		var apply = el('div', 'btn', 'Apply');
 		var done = el('div', 'btn', 'Done');
-		apply.onclick = function () { commit(false); toast('Applied'); };
+		apply.onclick = function () { commit(false); toast(engine && engine.available && engine.available() ? 'Applied live' : 'Saved'); };
 		done.onclick = function () { commit(false); closePanel(); };
 		bar.appendChild(apply); bar.appendChild(done);
 		scrim.appendChild(tabs); scrim.appendChild(list); scrim.appendChild(info); scrim.appendChild(note); scrim.appendChild(bar);
