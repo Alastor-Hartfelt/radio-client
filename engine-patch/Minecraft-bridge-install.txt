@@ -1,0 +1,15 @@
+RadioOptionsBridge install point for the local Eaglercraft 26.2 source build
+
+In the locally generated net/minecraft/client/Minecraft.java, find the existing constructor call:
+
+this.options.save();
+
+Immediately after it, add:
+
+RadioOptionsBridge.install();
+
+Then place engine-patch/RadioOptionsBridge.java at:
+
+net/minecraft/client/RadioOptionsBridge.java
+
+Do not commit the decompiled Minecraft source to this repository. The bridge is intended to be compiled as part of the local 26.2 Eagler/TeaVM build. The browser wrapper in src/radio-engine.js will detect the bridge automatically.
