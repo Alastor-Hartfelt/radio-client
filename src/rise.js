@@ -1012,10 +1012,11 @@
 		refresh();
 	}
 	function needsRestart() {
-		for (var a in staged) if (staged[a] !== current.map[a]) return true;
-		for (var b in stagedRise) if (stagedRise[b] !== cfg[b]) return true;
-		for (var c in stagedMods) if (c !== 'crosshair' && JSON.stringify(stagedMods[c]) !== JSON.stringify(mods[c])) return true;
-		if (stagedMods.crosshair !== undefined && packStamp().indexOf('rise_crosshair') < 0 && stagedMods.crosshair) return true;
+		// Only true pre-boot engine settings require a full restart.
+		for (var b in stagedRise) {
+			if ((b === 'chromebook' || b === 'meshWorkers' || b === 'chunkCap') &&
+				stagedRise[b] !== cfg[b]) return true;
+		}
 		return false;
 	}
 	function packStamp() { var s = readJSON('rise.packs.active') || ''; return (s.split('|')[1] || '').split(','); }
