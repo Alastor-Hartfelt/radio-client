@@ -1041,12 +1041,12 @@
 			t.onclick = function () { page[which] = p.id; tabs.querySelectorAll('.tab').forEach(function (x) { x.classList.toggle('on', x === t); }); renderList(); };
 			tabs.appendChild(t);
 		});
-		var note = el('div', 'note', 'Some changes apply after a restart. Save & quit your world first.');
+		var note = el('div', 'note', 'Changes are applied to the running client when you press Apply.');
 		var bar = el('div', 'bar');
 		var apply = el('div', 'btn', 'Apply');
 		var done = el('div', 'btn', 'Done');
-		apply.onclick = function () { if (needsRestart()) commit(true); else { commit(false); toast('Applied'); } };
-		done.onclick = function () { commit(false); if (needsRestart()) toast('Saved: applies next time you open Rise'); closePanel(); };
+		apply.onclick = function () { commit(false); toast('Applied'); };
+		done.onclick = function () { commit(false); closePanel(); };
 		bar.appendChild(apply); bar.appendChild(done);
 		scrim.appendChild(tabs); scrim.appendChild(list); scrim.appendChild(info); scrim.appendChild(note); scrim.appendChild(bar);
 		root.appendChild(scrim);
@@ -1056,8 +1056,8 @@
 	function refresh() {
 		if (!scrim) return;
 		var r = needsRestart();
-		scrim._note.classList.toggle('show', r);
-		scrim._apply.textContent = r ? 'Apply & Restart' : 'Apply';
+		scrim._note.classList.toggle('show', false);
+		scrim._apply.textContent = 'Apply';
 		scrim._list.querySelectorAll('.row').forEach(function (row) { if (row._it && (row._it.key || row._it.rise || row._it.mod)) row.classList.toggle('mod', isModified(row._it)); });
 	}
 	function showInfo(it, text) {
@@ -1146,7 +1146,7 @@
 					for (var key in vals) staged[key] = vals[key];
 					if (pr[0] === 'chromebook') { stagedRise.chromebook = true; stagedRise.chunkCap = true; cfg.hidpi = false; }
 					else { stagedRise.chromebook = false; stagedRise.chunkCap = false; if (pr[0] === 'quality') cfg.hidpi = true; }
-					saveCfg(); applyScale(); renderList(); toast(pr[1] + ' preset ready: press Apply & Restart');
+					saveCfg(); applyScale(); renderList(); toast(pr[1] + ' preset ready: press Apply');
 				};
 				right.appendChild(pb);
 			});
@@ -1197,7 +1197,7 @@
 			bar.appendChild(ch);
 		});
 		list.appendChild(bar);
-		list.appendChild(el('div', 'hint', 'Click a skin to wear it (one per item), click again to take it off. Right-click for a closer look. Skins only change how things look. Press Apply & Restart when you are done.'));
+		list.appendChild(el('div', 'hint', 'Click a skin to wear it (one per item), click again to take it off. Right-click for a closer look. Skins only change how things look. Press Apply when you are done.'));
 		var grid = el('div', 'grid');
 		list.appendChild(grid);
 		function fill() {
@@ -1240,7 +1240,7 @@
 		wear.onclick = function () { toggleSkin(s); wear.textContent = curSkins()[s.group] === s.id ? 'Take Off' : 'Wear'; if (onChange) onChange(); };
 		done.onclick = function () { closeCard(); };
 		foot.style.gap = '8px'; foot.appendChild(wear); foot.appendChild(done); card.appendChild(foot);
-		card.appendChild(el('div', 'rs', 'Skins apply after Apply & Restart.'));
+		card.appendChild(el('div', 'rs', 'Skins are applied when you press Apply.'));
 		bg.appendChild(card);
 		bg.addEventListener('mousedown', function (e) { if (e.target === bg) closeCard(); });
 		bg.addEventListener('contextmenu', function (e) { e.preventDefault(); });
@@ -1332,7 +1332,7 @@
 			add(Object.assign({}, it, { label: it.type === 'actions' ? 'Run' : 'Value' }));
 		}
 		(it.opts || []).forEach(add);
-		if (it.restart || it.key || (it.opts || []).some(function (o) { return o.restart; })) card.appendChild(el('div', 'rs', 'Some of this applies after a restart (press Apply & Restart).'));
+		if (it.restart || it.key || (it.opts || []).some(function (o) { return o.restart; })) card.appendChild(el('div', 'rs', 'This option is staged until Apply.'));
 		var foot = el('div', 'foot'), done = el('div', 'btn small', 'Done');
 		done.onclick = function () { closeCard(); };
 		foot.appendChild(done); card.appendChild(foot);
