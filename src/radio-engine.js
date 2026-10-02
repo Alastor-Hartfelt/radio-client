@@ -26,6 +26,15 @@
         if (!this.available()) return null;
         return window.Radio26Options.get(key);
       } catch (e) { return null; }
+    },
+    reloadResources: function () {
+      try {
+        if (!this.available() || !window.Radio26Options.reloadResources) return false;
+        return window.Radio26Options.reloadResources() === true;
+      } catch (e) {
+        console.warn('[Radio] live resource reload failed:', e);
+        return false;
+      }
     }
   };
 })();
