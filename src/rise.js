@@ -248,9 +248,14 @@
 			values.hideLightningFlashes = mods.noLightning ? 'true' : 'false';
 			Object.assign(values, ALWAYS);
 			var want = [];
-			if (!safeMode) { try { want = await installPacks(); } catch (e) { console.warn('[Rise] packs', e); } }
+			var packsChanged = false;
+			if (!safeMode) {
+				var beforePacks = readJSON('rise.packs.active');
+				try { want = await installPacks(); } catch (e) { console.warn('[Rise] packs', e); }
+				packsChanged = beforePacks !== (readJSON('rise.packs.active') || null);
+			}
 			await patchOptions(values, function (o) { editPackList(o, want); });
-			if (!safeMode && engine && engine.reloadResources && want.length) {
+			if (!safeMode && packsChanged && engine && engine.reloadResources) {
 				engine.reloadResources();
 			}
 			try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
