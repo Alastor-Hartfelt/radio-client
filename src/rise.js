@@ -1169,9 +1169,9 @@
 				pb.onclick = function () {
 					var vals = PRESETS[pr[0]];
 					for (var key in vals) staged[key] = vals[key];
-					if (pr[0] === 'chromebook') { stagedRise.chromebook = true; stagedRise.chunkCap = true; cfg.hidpi = false; }
-					else { stagedRise.chromebook = false; stagedRise.chunkCap = false; if (pr[0] === 'quality') cfg.hidpi = true; }
-					saveCfg(); applyScale(); renderList(); toast(pr[1] + ' preset ready: press Apply');
+					if (pr[0] === 'chromebook') { stagedRise.chromebook = true; stagedRise.chunkCap = true; stagedRise.hidpi = false; }
+					else { stagedRise.chromebook = false; stagedRise.chunkCap = false; if (pr[0] === 'quality') stagedRise.hidpi = true; }
+					dynScale = 1; renderList(); toast(pr[1] + ' preset ready: press Apply');
 				};
 				right.appendChild(pb);
 			});
