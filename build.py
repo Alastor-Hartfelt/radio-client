@@ -232,6 +232,7 @@ def main():
     import json
     ex = os.path.join(ROOT, 'theme_extra')
     rise = open(os.path.join(ROOT, 'src', 'rise.js'), encoding='utf-8').read()
+    engine_bridge = open(os.path.join(ROOT, 'src', 'radio-engine.js'), encoding='utf-8').read()
     bp_path = os.path.join(ROOT, '..', 'BlueprintMod', 'blueprint.js')
     if os.path.isfile(bp_path):
         bp = open(bp_path, encoding='utf-8').read()
@@ -255,7 +256,7 @@ def main():
     assert '</script' not in rise.lower()
     anchor = '<script type="module">'
     assert html.count(anchor) == 1
-    html = html.replace(anchor, '<script type="text/javascript">\n' + rise + '\n</script>\n\t' + anchor)
+    html = html.replace(anchor, '<script type="text/javascript">\n' + engine_bridge + '\n</script>\n<script type="text/javascript">\n' + rise + '\n</script>\n\t' + anchor)
 
     # 4. Radio branding: title, favicon, and the RADIO wordmark on the black loading stage.
     html = html.replace('<title>Eaglercraft 26.2 0.6-dev</title>', '<title>Radio Client</title>', 1)
