@@ -99,6 +99,17 @@ public final class RadioOptionsBridge {
         }
     }
 
+    public static boolean reloadResources() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft == null) return false;
+        try {
+            minecraft.reloadResourcePacks();
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static boolean available() {
         return true;
     }
@@ -107,6 +118,7 @@ public final class RadioOptionsBridge {
         "globalThis.Radio26Options = globalThis.Radio26Options || {};" +
         "globalThis.Radio26Options.set = function(k,v) { return javaMethods.get('net.minecraft.client.RadioOptionsBridge.setOption(Ljava/lang/String;Ljava/lang/String;)Z').invoke(k,String(v)); };" +
         "globalThis.Radio26Options.get = function(k) { return javaMethods.get('net.minecraft.client.RadioOptionsBridge.getOption(Ljava/lang/String;)Ljava/lang/String;').invoke(k); };" +
+        "globalThis.Radio26Options.reloadResources = function() { return javaMethods.get('net.minecraft.client.RadioOptionsBridge.reloadResources()Z').invoke(); };" +
         "globalThis.Radio26Options.available = function() { return true; };")
     private static native void install0();
 }
