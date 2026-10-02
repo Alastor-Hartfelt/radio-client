@@ -250,6 +250,9 @@
 			var want = [];
 			if (!safeMode) { try { want = await installPacks(); } catch (e) { console.warn('[Rise] packs', e); } }
 			await patchOptions(values, function (o) { editPackList(o, want); });
+			if (!safeMode && engine && engine.reloadResources && want.length) {
+				engine.reloadResources();
+			}
 			try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
 		})(),
 		sleep(3000) // never hold the game hostage
@@ -1008,10 +1011,6 @@
 			if (it.mod === 'crosshair') { mods.crosshair = v; saveMods(); applyMods(); } // overlay is instant; only the vanilla hide waits
 		} else {
 			staged[it.key] = v;
-			if (engine && engine.set && engine.set(it.key, v)) {
-				// Keep the wrapper's HUD/screen detector in sync with the live engine.
-				if (it.key === 'guiScale') { guiScaleOpt = parseInt(v, 10) || 0; applyScale(); }
-			}
 			if (cardEl && cardEl._pic) cardEl._pic._draw();
 			if (['renderClouds', 'particles', 'ao', 'biomeBlendRadius', 'entityShadows', 'cutoutLeaves', 'improvedTransparency', 'mipmapLevels', 'textureFiltering', 'renderDistance', 'simulationDistance'].indexOf(it.key) >= 0) staged.graphicsPreset = q('custom');
 		}
@@ -1037,7 +1036,13 @@
 			// If the real 26.2 bridge is present, OptionInstance.set() has already
 			// applied this change to the running client. Otherwise retain the old
 			// pre-boot path for the next launch.
-			if (!(engine && engine.set && engine.set(key, staged[key]))) pend[key] = staged[key];
+			var live = engine && engine.set && engine.set(key, staged[key]);
+			if (!live) {
+				pend[key] = staged[key];
+			} else if (key === 'guiScale') {
+				guiScaleOpt = parseInt(staged[key], 10) || 0;
+				applyScale();
+			}
 		}
 		if (Object.keys(pend).length) writeJSON(PENDING_KEY, pend);
 		if (restart) { toast('Restarting Radio Client…'); setTimeout(function () { location.reload(); }, 450); }
