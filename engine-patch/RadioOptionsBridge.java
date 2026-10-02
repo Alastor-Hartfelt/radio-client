@@ -46,6 +46,10 @@ public final class RadioOptionsBridge {
                 case "pauseOnLostFocus": o.pauseOnLostFocus = Boolean.valueOf(value); break;
                 case "showAutosaveIndicator": o.showAutosaveIndicator().set(Boolean.valueOf(value)); break;
                 case "reducedDebugInfo": o.reducedDebugInfo().set(Boolean.valueOf(value)); break;
+                case "damageTiltStrength": o.damageTiltStrength().set(Double.valueOf(value)); break;
+                case "fovEffectScale": o.fovEffectScale().set(Double.valueOf(value)); break;
+                case "screenEffectScale": o.screenEffectScale().set(Double.valueOf(value)); break;
+                case "hideLightningFlashes": o.hideLightningFlash().set(Boolean.valueOf(value)); break;
                 default: return false;
             }
             o.save();
@@ -84,6 +88,10 @@ public final class RadioOptionsBridge {
                 case "pauseOnLostFocus": return String.valueOf(o.pauseOnLostFocus);
                 case "showAutosaveIndicator": return String.valueOf(o.showAutosaveIndicator().get());
                 case "reducedDebugInfo": return String.valueOf(o.reducedDebugInfo().get());
+                case "damageTiltStrength": return String.valueOf(o.damageTiltStrength().get());
+                case "fovEffectScale": return String.valueOf(o.fovEffectScale().get());
+                case "screenEffectScale": return String.valueOf(o.screenEffectScale().get());
+                case "hideLightningFlashes": return String.valueOf(o.hideLightningFlash().get());
                 default: return null;
             }
         } catch (Throwable t) {
