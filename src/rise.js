@@ -895,7 +895,7 @@
 			modBool('cps', 'CPS Counter', 'Shows how many times you click per second (left | right).'),
 			modBool('fps', 'FPS Display', 'Shows your real frames per second.', { opts: [
 				opt('fpsCorner', 'Position', [['left', 'Top Left'], ['right', 'Top Right']], 'Which corner the counter sits in. Top right is where the game shows tutorial and advancement pop-ups.')] }),
-			modBool('crosshair', 'Custom Crosshair', 'Swaps the vanilla crosshair for your own shape and colour. Hiding the vanilla one takes a restart.', { restart: true, opts: [
+			modBool('crosshair', 'Custom Crosshair', 'Swaps the vanilla crosshair for your own shape and colour.', { opts: [
 				opt('crosshairStyle', 'Style', [['cross', 'Cross'], ['dot', 'Dot'], ['circle', 'Circle'], ['plus', 'Plus + Dot']], 'Shape.'),
 				opt('crosshairColor', 'Colour', [['#f3263e', 'Crimson'], ['#f2d9ad', 'Warm Cream'], ['#ffffff', 'White'], ['#ff5470', 'Rose'], ['#9dff5c', 'Lime']], 'Colour.'),
 				opt('crosshairSize', 'Size', [[0.75, 'Small'], [1, 'Normal'], [1.5, 'Big']], 'Size.')] })
@@ -928,8 +928,8 @@
 			{ name: 'YOUR COMPUTER', items: [
 				modBool('batterySaver', 'Battery Saver', 'Menus run at 30 fps, and while your laptop is unplugged the game is capped lower so the battery lasts longer. Plugged in, the game runs at your normal Max Framerate.', { opts: [
 					opt('batteryCap', 'Unplugged Cap', [[30, '30 fps'], [0, 'No cap']], 'Highest framerate in the world while running on battery.')] }),
-				modBool('entityCull', 'Entity Culling', 'Far-away mobs and items are not drawn, and entity shadows are off. (The game already skips entities behind you; ones behind walls still draw, that part is inside the engine.) Takes a restart.', { restart: true, opts: [
-					opt('cullDistance', 'Draw Distance', [[0.25, 'Short'], [0.5, 'Medium'], [0.75, 'Long']], 'How far away entities are still drawn.', { restart: true })] })
+				modBool('entityCull', 'Entity Culling', 'Far-away mobs and items are not drawn, and entity shadows are off. (The game already skips entities behind you; ones behind walls still draw, that part is inside the engine.)', { opts: [
+					opt('cullDistance', 'Draw Distance', [[0.25, 'Short'], [0.5, 'Medium'], [0.75, 'Long']], 'How far away entities are still drawn.')] })
 			] },
 			{ name: 'THE WORLD (NEEDS CHEATS)', items: [
 				modBool('clearLag', 'Clear Lag', 'Like a server ClearLag plugin: while you play, Rise warns you and then clears all dropped items on a timer. Chat opens for a moment when it runs.', { opts: [
@@ -941,23 +941,23 @@
 		] },
 		{ id: 'misc', name: 'Misc', groups: [
 			{ name: 'LOOKS (RESTART)', items: [
-				modBool('glint', 'Enchant Glint Colour', 'Changes the shimmer on enchanted items and armour.', { restart: true, preview: 'glint', opts: [
-					opt('glintColor', 'Colour', [['red', 'Crimson'], ['gold', 'Gold'], ['rainbow', 'Rainbow']], 'Glint colour.', { restart: true })] }),
-				modBool('glowOres', 'Glowing Ores', 'Ore blocks glow at full brightness, so you can spot them in dark caves. They do not light up the area around them.', { restart: true }),
-				modBool('cleanGlass', 'Clean Glass', 'Glass keeps only its thin frame, no streaks, so windows look clear.', { restart: true }),
-				modBool('lowFire', 'Low Fire', 'Shrinks the fire on your screen (and fire blocks) so you can see.', { restart: true }),
-				modBool('clearWater', 'Clear Water', 'Makes the water texture mostly see-through.', { restart: true }),
-				modBool('noPumpkin', 'No Pumpkin Blur', 'Removes the carved-pumpkin overlay when you wear one.', { restart: true })
+				modBool('glint', 'Enchant Glint Colour', 'Changes the shimmer on enchanted items and armour.', { preview: 'glint', opts: [
+					opt('glintColor', 'Colour', [['red', 'Crimson'], ['gold', 'Gold'], ['rainbow', 'Rainbow']], 'Glint colour.')] }),
+				modBool('glowOres', 'Glowing Ores', 'Ore blocks glow at full brightness, so you can spot them in dark caves. They do not light up the area around them.'),
+				modBool('cleanGlass', 'Clean Glass', 'Glass keeps only its thin frame, no streaks, so windows look clear.'),
+				modBool('lowFire', 'Low Fire', 'Shrinks the fire on your screen (and fire blocks) so you can see.'),
+				modBool('clearWater', 'Clear Water', 'Makes the water texture mostly see-through.'),
+				modBool('noPumpkin', 'No Pumpkin Blur', 'Removes the carved-pumpkin overlay when you wear one.')
 			] },
 			{ name: 'SHADERS', items: [
 				modBool('shader', 'Shader Filter', 'Colour-grades the whole game for a different look, instantly. These are colour filters, not full shaders (no shadows or waving leaves), and they cost a tiny bit of GPU. For less lag use the Performance tab in Video Settings.', { preview: 'shader', opts: [
 					opt('shaderStyle', 'Look', [['vibrant', 'Vibrant'], ['cinematic', 'Cinematic'], ['sunset', 'Sunset'], ['ocean', 'Ocean'], ['dreamy', 'Dreamy'], ['noir', 'Noir']], 'Which look.')] })
 			] },
-			{ name: 'CAMERA (RESTART)', items: [
-				modBool('noHurtTilt', 'No Hurt Shake', 'The screen does not tilt when you take damage.', { restart: true }),
-				modBool('noFovFx', 'No FOV Change', 'The view does not zoom in and out when you sprint or get speed.', { restart: true }),
-				modBool('noWobble', 'No Screen Wobble', 'Removes the nausea and portal wobble effects.', { restart: true }),
-				modBool('noLightning', 'No Lightning Flash', 'Lightning no longer flashes the whole sky white.', { restart: true })
+			{ name: 'CAMERA', items: [
+				modBool('noHurtTilt', 'No Hurt Shake', 'The screen does not tilt when you take damage.'),
+				modBool('noFovFx', 'No FOV Change', 'The view does not zoom in and out when you sprint or get speed.'),
+				modBool('noWobble', 'No Screen Wobble', 'Removes the nausea and portal wobble effects.'),
+				modBool('noLightning', 'No Lightning Flash', 'Lightning no longer flashes the whole sky white.')
 			] },
 			{ name: 'ABOUT', items: [{ type: 'about', label: 'Radio Client ' + VERSION, desc: 'Eaglercraft 26.2 by o_xer, based on EaglercraftX 1.8 by lax1dude. Minecraft is (c) Mojang.' }] }
 		] },
@@ -1007,13 +1007,10 @@
 	}
 	function setValue(it, v) {
 		if (it.rise) {
-			if (it.restart) stagedRise[it.rise] = v;
-			else { cfg[it.rise] = v; saveCfg(); dynScale = 1; applyScale(); }
+			stagedRise[it.rise] = v;
 		} else if (it.mod) {
-			if (it.restart) stagedMods[it.mod] = v;
-			else { mods[it.mod] = v; saveMods(); applyMods(); }
+			stagedMods[it.mod] = v;
 			if (cardEl && cardEl._pic) cardEl._pic._draw();
-			if (it.mod === 'crosshair') { mods.crosshair = v; saveMods(); applyMods(); } // overlay is instant; only the vanilla hide waits
 		} else {
 			staged[it.key] = v;
 			if (cardEl && cardEl._pic) cardEl._pic._draw();
@@ -1031,10 +1028,14 @@
 	}
 	function packStamp() { var s = readJSON('rise.packs.active') || ''; return (s.split('|')[1] || '').split(','); }
 	function commit(restart) {
+		var riseChanged = Object.keys(stagedRise).length > 0;
+		var modsChanged = Object.keys(stagedMods).length > 0;
 		for (var r in stagedRise) cfg[r] = stagedRise[r];
 		for (var m in stagedMods) mods[m] = stagedMods[m];
 		stagedRise = {}; stagedMods = {};
 		saveCfg(); saveMods();
+		if (riseChanged) { dynScale = 1; applyScale(); }
+		if (modsChanged) applyMods();
 		var pend = {};
 		for (var key in staged) {
 			if (staged[key] === current.map[key]) continue;
@@ -1065,11 +1066,13 @@
 		});
 		var note = el('div', 'note', 'Changes are applied live when the 26.2 engine bridge is available; otherwise they take effect on the next launch.');
 		var bar = el('div', 'bar');
+		var undo = el('div', 'btn', 'Undo');
 		var apply = el('div', 'btn', 'Apply');
 		var done = el('div', 'btn', 'Done');
+		undo.onclick = function () { staged = {}; stagedRise = {}; stagedMods = {}; renderList(); toast('Undone'); };
 		apply.onclick = function () { commit(false); toast(engine && engine.available && engine.available() ? 'Applied live' : 'Saved'); };
 		done.onclick = function () { commit(false); closePanel(); };
-		bar.appendChild(apply); bar.appendChild(done);
+		bar.appendChild(undo); bar.appendChild(apply); bar.appendChild(done);
 		scrim.appendChild(tabs); scrim.appendChild(list); scrim.appendChild(info); scrim.appendChild(note); scrim.appendChild(bar);
 		root.appendChild(scrim);
 		scrim._list = list; scrim._info = info; scrim._note = note; scrim._apply = apply; scrim._defs = defs;
@@ -1078,7 +1081,7 @@
 	function refresh() {
 		if (!scrim) return;
 		var r = needsRestart();
-		scrim._note.classList.toggle('show', false);
+		scrim._note.classList.toggle('show', r);
 		scrim._apply.textContent = 'Apply';
 		scrim._list.querySelectorAll('.row').forEach(function (row) { if (row._it && (row._it.key || row._it.rise || row._it.mod)) row.classList.toggle('mod', isModified(row._it)); });
 	}
@@ -1089,7 +1092,7 @@
 		info.appendChild(el('b', null, it.label + (text ? ': ' + text : '')));
 		if (it.desc) info.appendChild(el('p', null, it.desc));
 		if (it.impact) info.appendChild(el('i', null, 'Performance impact: ' + it.impact));
-		if (it.restart || it.key) { var pr = el('p', null, 'Applies after restart.'); pr.style.marginTop = '6px'; info.appendChild(pr); }
+		if (it.restart || (it.rise && (it.rise === 'chromebook' || it.rise === 'meshWorkers' || it.rise === 'chunkCap'))) { var pr = el('p', null, 'Applies after restart.'); pr.style.marginTop = '6px'; info.appendChild(pr); }
 		info.classList.add('show');
 	}
 	function renderList() {
