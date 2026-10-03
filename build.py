@@ -332,7 +332,6 @@ def make_web(html, version):
     # the three .wasm images come from Rise's cache, ready to compile (see web-loader.js)
     a = '  window.__eagReleaseInlineWasm = function () {'
     assert html.count(a) == 1
-    html = html.replace(a, WASM_FETCH + a)
     # the world thread reads its assets from a blob in memory instead of the network
     a = '\t\t\t\t\twindow.__eaglerWasmRuntimeURL = null;\n'
     assert html.count(a) == 1
