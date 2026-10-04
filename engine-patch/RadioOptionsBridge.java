@@ -30,6 +30,48 @@ public final class RadioOptionsBridge {
                 case "guiScale": o.guiScale().set(Integer.valueOf(value)); break;
                 case "enableVsync": o.enableVsync().set(Boolean.valueOf(value)); break;
                 case "bobView": o.bobView().set(Boolean.valueOf(value)); break;
+                case "inactivityFpsLimit":
+                    o.inactivityFpsLimit().set(
+                        "minimized".equalsIgnoreCase(value)
+                            ? InactivityFpsLimit.MINIMIZED
+                            : InactivityFpsLimit.AFK
+                    );
+                    break;
+                case "renderClouds":
+                    if ("false".equalsIgnoreCase(value) || "off".equalsIgnoreCase(value))
+                        o.cloudStatus().set(CloudStatus.OFF);
+                    else if ("fast".equalsIgnoreCase(value))
+                        o.cloudStatus().set(CloudStatus.FAST);
+                    else
+                        o.cloudStatus().set(CloudStatus.FANCY);
+                    break;
+                case "textureFiltering":
+                    switch (value) {
+                        case "0": o.textureFiltering().set(TextureFilteringMethod.NONE); break;
+                        case "1": o.textureFiltering().set(TextureFilteringMethod.RGSS); break;
+                        case "2": o.textureFiltering().set(TextureFilteringMethod.ANISOTROPIC); break;
+                        default: return false;
+                    }
+                    break;
+                case "attackIndicator":
+                    switch (value) {
+                        case "0": o.attackIndicator().set(AttackIndicatorStatus.OFF); break;
+                        case "1": o.attackIndicator().set(AttackIndicatorStatus.CROSSHAIR); break;
+                        case "2": o.attackIndicator().set(AttackIndicatorStatus.HOTBAR); break;
+                        default: return false;
+                    }
+                    break;
+                case "particles":
+                    switch (value) {
+                        case "0": o.particles().set(ParticleStatus.ALL); break;
+                        case "1": o.particles().set(ParticleStatus.DECREASED); break;
+                        case "2": o.particles().set(ParticleStatus.MINIMAL); break;
+                        default: return false;
+                    }
+                    break;
+                case "eaglerPerformanceCounters":
+                    o.showPerformanceCounters().set(Boolean.valueOf(value));
+                    break;
                 case "toggleSprint": o.toggleSprint().set(Boolean.valueOf(value)); break;
                 case "toggleCrouch": o.toggleCrouch().set(Boolean.valueOf(value)); break;
                 case "ao": o.ambientOcclusion().set(Boolean.valueOf(value)); break;
@@ -72,6 +114,32 @@ public final class RadioOptionsBridge {
                 case "guiScale": return String.valueOf(o.guiScale().get());
                 case "enableVsync": return String.valueOf(o.enableVsync().get());
                 case "bobView": return String.valueOf(o.bobView().get());
+                case "inactivityFpsLimit": return o.inactivityFpsLimit().get() == InactivityFpsLimit.MINIMIZED ? "minimized" : "afk";
+                case "renderClouds":
+                    switch (o.cloudStatus().get()) {
+                        case OFF: return "false";
+                        case FAST: return "fast";
+                        default: return "true";
+                    }
+                case "textureFiltering":
+                    switch (o.textureFiltering().get()) {
+                        case NONE: return "0";
+                        case RGSS: return "1";
+                        default: return "2";
+                    }
+                case "attackIndicator":
+                    switch (o.attackIndicator().get()) {
+                        case OFF: return "0";
+                        case CROSSHAIR: return "1";
+                        default: return "2";
+                    }
+                case "particles":
+                    switch (o.particles().get()) {
+                        case ALL: return "0";
+                        case DECREASED: return "1";
+                        default: return "2";
+                    }
+                case "eaglerPerformanceCounters": return String.valueOf(o.showPerformanceCounters().get());
                 case "toggleSprint": return String.valueOf(o.toggleSprint().get());
                 case "toggleCrouch": return String.valueOf(o.toggleCrouch().get());
                 case "ao": return String.valueOf(o.ambientOcclusion().get());
