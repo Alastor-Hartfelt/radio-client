@@ -123,7 +123,7 @@ def main() -> None:
         create += [
             "--resource-overlay", str(resource_overlay),
             "--expected-resource-overlay-sha256", overlay_sha,
-            "--external-resource-root", str(setup / "inputs"),
+            "--external-resource-root", str(setup / "inputs" / "resources"),
         ]
     run(create)
 
@@ -156,7 +156,7 @@ def main() -> None:
         build += [
             "--resource-overlay", str(resource_overlay),
             "--expected-resource-overlay-sha256", overlay_sha,
-            "--external-resource-root", str(setup / "inputs"),
+            "--external-resource-root", str(setup / "inputs" / "resources"),
         ]
     run(build)
 
