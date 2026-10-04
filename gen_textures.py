@@ -380,15 +380,15 @@ def make_panorama():
     source_dir = ROOT
 
     for face in range(6):
-        src = source_dir / ("panorama_%d.png" % face)
-        dst = Path(GUI) / "title/background/panorama_%d.png" % face
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(src.read_bytes())
+        src = os.path.join(source_dir, "panorama_%d.png" % face)
+        dst = os.path.join(GUI, "title/background/panorama_%d.png" % face)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        os.replace(src, dst)
 
-    src = source_dir / "panorama_overlay.png"
-    dst = Path(GUI) / "title/background/panorama_overlay.png"
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_bytes(src.read_bytes())
+    src = os.path.join(source_dir, "panorama_overlay.png")
+    dst = os.path.join(GUI, "title/background/panorama_overlay.png")
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    os.replace(src, dst)
 
 SPLASHES = """Now with observers!
 Railguns approved!
