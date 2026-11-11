@@ -18,9 +18,8 @@ The `radio-client` branch contains the Radio UI palette and source/build brandin
 The build script expects these files outside the normal tracked source tree:
 
 - `ref/wispcraft-26.2.html`
-- `../BlueprintMod/blueprint.js`
 
-The `ref/` directory is intentionally gitignored, and the BlueprintMod file is a sibling dependency. As a result, a clean checkout alone is not yet enough to reproduce the build.
+The `ref/` directory is intentionally gitignored. Supply a compatible standalone 26.2 build when regenerating Radio Client.
 
 
 ## Original project

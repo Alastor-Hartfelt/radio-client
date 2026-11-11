@@ -209,16 +209,35 @@ def data_uri_image(path):
     return 'data:' + mime + ';base64,' + base64.b64encode(open(path, 'rb').read()).decode()
 
 
+def inject_wispcraft(html, script_path):
+    with open(script_path, encoding='utf-8') as source:
+        script = source.read()
+    if not script.strip():
+        raise ValueError('The Wispcraft script is empty')
+    if '__eaglerNativeWebSocket' in html[:html.index('id="eag-inline-decoder"')]:
+        raise ValueError('The standalone input already contains a Wispcraft injection')
+    # The 26.2 transport uses the original constructor for normal EaglerX sockets.
+    capture = ('Object.defineProperty(globalThis,"__eaglerNativeWebSocket",'
+               '{value:globalThis.WebSocket,writable:false,configurable:false});')
+    script = re.sub(r'</script', lambda match: '<\\/' + match[0][2:], script, flags=re.I)
+    charset = '<meta charset="utf-8">'
+    injection = '\n<script>' + capture + '</script>\n<script>\n' + script + '\n</script>\n'
+    return html.replace(charset, charset + injection, 1)
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--base', default=BASE, help='standalone Eaglercraft 26.2 HTML input')
+    parser.add_argument('--wispcraft-script', help='local compiled Wispcraft UMD script for a WISP-capable 26.2 engine')
     args = parser.parse_args()
     html = open(args.base, 'r', encoding='utf-8').read()
     # Browsers only scan the first 1024 bytes for a charset declaration.
     # The base document places large inline scripts before its metadata.
     html = re.sub(r'<meta\s+charset=["\']UTF-8["\']\s*/?>', '', html, count=1, flags=re.I)
     html = html.replace('<head>', '<head>\n<meta charset="utf-8">', 1)
+    if args.wispcraft_script:
+        html = inject_wispcraft(html, args.wispcraft_script)
 
     # 1. assets payload
     m = re.search(r'(<script type="application/octet-stream" id="eag-inline-assets" data-size=")(\d+)(">)(.*?)(</script>)', html, re.S)
@@ -237,30 +256,14 @@ def main():
     html = html.replace(boot, '\t\t(async () => {\n\t\t\ttry {\n\t\t\t\tawait (window.__risePreboot || null);\n\t\t\t\twindow.__eagPrepareInlineAssets();')
 
     # 3. inject rise.js (with its build-time data) right before the (deferred) module boot script
-    import json
     ex = os.path.join(ROOT, 'theme_extra')
     rise = open(os.path.join(ROOT, 'src', 'rise.js'), encoding='utf-8').read()
     engine_bridge = open(os.path.join(ROOT, 'src', 'radio-engine.js'), encoding='utf-8').read()
-    bp_path = os.path.join(ROOT, '..', 'BlueprintMod', 'blueprint.js')
-    if os.path.isfile(bp_path):
-        bp = open(bp_path, encoding='utf-8').read()
-        a = 'btn.style.display = locked ? "none" : "";'
-        assert a in bp, 'BlueprintMod lock-button anchor not found'
-        bp = bp.replace(a, 'btn.style.display = "none";')  # opened from the Rise Mods menu instead
-        a = '  function boot() {'
-        assert a in bp, 'BlueprintMod boot anchor not found'
-        bp = bp.replace(a, '  window.__blueprintMod.open = function () { panel.hidden = false; renderPanel(); };\n' + a)
-    else:
-        # BlueprintMod is an optional sibling dependency, not tracked in this repository.
-        # Leave the rest of the client build usable and show a notice if its menu item is clicked.
-        bp = ''
-        print('BlueprintMod not found; blueprint feature will be unavailable in this build')
     rise = (rise.replace('%GLYPHS%', open(os.path.join(ex, 'glyphs.json')).read())
                 .replace('%FONT%', base64.b64encode(open(os.path.join(ex, 'rise-font.ttf'), 'rb').read()).decode())
                 .replace('%PACKS%', open(os.path.join(ex, 'packs.json')).read())
                 .replace('%PREVIEWS%', open(os.path.join(ex, 'previews.json')).read())
-                .replace('%SKINS%', open(os.path.join(ex, 'skins.json')).read())
-                .replace('%BLUEPRINT%', json.dumps(bp).replace('</', '<\\/')))
+                .replace('%SKINS%', open(os.path.join(ex, 'skins.json')).read()))
     assert '</script' not in rise.lower()
     anchor = '<script type="module">'
     assert html.count(anchor) == 1

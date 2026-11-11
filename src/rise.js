@@ -5,7 +5,7 @@
  *    pause screens. Radio identifies them by matching text in the finished frame.
  *  - Mods: keystrokes, CPS, FPS, crosshair, zoom, fullbright, toggle sprint and
  *    sneak, hitboxes, chunk borders, tick control, quick commands, TNT lag fix,
- *    blueprints, and texture mods (low fire, clear water, no pumpkin blur).
+ *    and texture mods (low fire, clear water, no pumpkin blur).
  *  - Pre-boot options pass, Chromebook mode and render resolution.
  *
  * Loaded after the page's eaglercraftXOpts script and before the boot script,
@@ -23,7 +23,6 @@
 	// Live 26.2 engine bridge; falls back cleanly on the existing compiled client.
 	var engine = window.__radioEngine || null;
 	var PACKS = %PACKS%;
-	var BLUEPRINT_SRC = %BLUEPRINT%;
 	var PREVIEWS = %PREVIEWS%;
 	var SKINS = %SKINS%;
 	for (var sp in SKINS.packs) PACKS[sp] = SKINS.packs[sp];
@@ -911,8 +910,7 @@
 			modBool('toggleSneak', 'Toggle Sneak', 'Tap sneak once instead of holding it. Works instantly while you play.'),
 			modBool('passwordHider', 'Password Hider', 'Shows asterisks after /login in chat. The server still receives the original command.'),
 			cmdRow('Hitboxes', 'Shows the boxes around mobs and items (same as F3+B).', [['Toggle', chord('b', 'KeyB', 66, 'Hitboxes')]]),
-			cmdRow('Chunk Borders', 'Shows the lines between chunks (same as F3+G). Great for redstone and farms.', [['Toggle', chord('g', 'KeyG', 71, 'Chunk borders')]]),
-			{ type: 'blueprint', label: 'Blueprints', desc: 'Pick a build and follow it layer by layer. [ and ] change layer, B hides it.' }
+			cmdRow('Chunk Borders', 'Shows the lines between chunks (same as F3+G). Great for redstone and farms.', [['Toggle', chord('g', 'KeyG', 71, 'Chunk borders')]])
 		] }] },
 		{ id: 'redstone', name: 'Redstone', groups: [
 			{ name: 'TICK CONTROL (NEEDS CHEATS)', items: [
@@ -1291,10 +1289,6 @@
 			});
 		} else if (it.type === 'actions') {
 			it.buttons.forEach(function (bt) { var ab = el('div', 'btn small', bt[0]); ab.onclick = bt[1]; right.appendChild(ab); });
-		} else if (it.type === 'blueprint') {
-			var ob = el('div', 'btn small', 'Open');
-			ob.onclick = function () { applyPanel(true).then(openBlueprint); };
-			right.appendChild(ob);
 		} else if (it.type === 'reset') {
 			var rb = el('div', 'btn small', 'Reset');
 			rb.onclick = function () { var seeded = cfg.seeded; cfg = Object.assign({}, DEF_CFG, { seeded: seeded }); saveCfg(); dynScale = 1; applyScale(); stagedRise = {}; renderList(); toast('Radio settings reset'); };
@@ -1389,7 +1383,7 @@
 	}
 
 	// pictures in the right-click card
-	var ICON_OF = { 'Hitboxes': 'hitboxes', 'Chunk Borders': 'chunks', 'Blueprints': 'blueprint', 'Freeze Time': 'freeze', 'Step': 'step', 'Tick Rate': 'rate',
+	var ICON_OF = { 'Hitboxes': 'hitboxes', 'Chunk Borders': 'chunks', 'Freeze Time': 'freeze', 'Step': 'step', 'Tick Rate': 'rate',
 		'Redstone Kit': 'kit', 'Game Mode': 'gamemode', 'Time & Weather': 'time', 'World Rules': 'rules', 'Clear Items Now': 'clearItems',
 		'Entity Cramming': 'cramming', 'TNT Lag Fix': 'tnt' };
 	function dataPng(b64) { return 'url(data:image/png;base64,' + b64 + ')'; }
@@ -1467,7 +1461,7 @@
 		if (it.type === BOOL) {
 			var on = Object.assign({}, it, { label: it.key || it.rise ? 'On' : 'Enabled', opts: null });
 			add(on);
-		} else if (it.type === 'actions' || it.type === 'blueprint' || it.type === 'cycle' || it.type === 'slider' || it.type === 'presets') {
+		} else if (it.type === 'actions' || it.type === 'cycle' || it.type === 'slider' || it.type === 'presets') {
 			add(Object.assign({}, it, { label: it.type === 'actions' ? 'Run' : 'Value' }));
 		}
 		(it.opts || []).forEach(add);
@@ -1574,16 +1568,6 @@
 		}
 	}
 	setInterval(updateHud, 100);
-
-	var bpLoaded = false;
-	function openBlueprint() {
-		if (!BLUEPRINT_SRC) { toast('Blueprints are unavailable in this build'); return; }
-		if (!bpLoaded) {
-			bpLoaded = true;
-			try { (new Function(BLUEPRINT_SRC))(); } catch (e) { console.warn('[Radio] blueprint', e); toast('Blueprints failed to load'); return; }
-		}
-		setTimeout(function () { if (window.__blueprintMod && window.__blueprintMod.open) window.__blueprintMod.open(); }, 50);
-	}
 
 	// FPS + dynamic resolution from real presented frames
 	var lastFpsT = performance.now(), lastPresents = 0, lastChange = 0;

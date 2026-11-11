@@ -66,6 +66,8 @@ def main() -> None:
                     help="temporary standalone HTML output")
     ap.add_argument("--keep-workspace", action="store_true",
                     help="keep the generated/decompiled workspace after a successful build")
+    ap.add_argument("--wispcraft-script", type=Path,
+                    help="local compiled Wispcraft UMD script to bundle with Radio")
     args = ap.parse_args()
 
     setup = args.setup.resolve()
@@ -161,7 +163,11 @@ def main() -> None:
     run(build)
 
     print(f"\n[Radio build] 26.2 engine ready: {standalone}")
-    run([sys.executable, str(ROOT / "build.py"), "--base", str(standalone)], cwd=ROOT)
+    package = [sys.executable, str(ROOT / "build.py"), "--base", str(standalone)]
+    if args.wispcraft_script:
+        script = require_file(args.wispcraft_script.resolve(), "Wispcraft script")
+        package += ["--wispcraft-script", str(script)]
+    run(package, cwd=ROOT)
 
     if not args.keep_workspace:
         shutil.rmtree(workspace)
