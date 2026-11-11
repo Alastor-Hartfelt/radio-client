@@ -3,43 +3,18 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SITE="$ROOT/site"
+CLIENT="$ROOT/client"
 
-# Preserve the existing launcher and build the playable client into /client/.
-# The build pulls the branch tip, regenerates the vintage Radio tentacle panorama, and keeps the homepage unchanged.
+# Stage the tested client from this commit, including its patched Wasm engine.
+test -s "$CLIENT/index.html"
+test -s "$CLIENT/version.txt"
+for payload in assets mesh-wasm-br server-wasm-br sounds wasm-br; do
+  test -s "$CLIENT/payload/eag-inline-$payload.bin"
+done
+
 rm -rf "$SITE"
-mkdir -p "$SITE/radio"
-cp "$ROOT/index.html" "$SITE/index.html"
+mkdir -p "$SITE/radio" "$SITE/client"
+cp "$ROOT/index.html" "$ROOT/launch.html" "$SITE/"
 cp "$ROOT/radio/index.html" "$SITE/radio/index.html"
-
-echo "Redistribution permission confirmed by the project owner; building the public client."
-
-WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
-
-curl --fail --location --retry 2 --silent --show-error \
-  --output "$WORK/repository.zip" \
-  "https://github.com/Alastor-Hartfelt/radio-client/archive/refs/heads/radio-client.zip"
-unzip -q "$WORK/repository.zip" -d "$WORK"
-SOURCE="$(find "$WORK" -mindepth 1 -maxdepth 1 -type d -name 'radio-client-*' -print -quit)"
-test -n "$SOURCE"
-
-mkdir -p "$SOURCE/ref"
-curl --fail --location --retry 2 --silent --show-error \
-  --output "$SOURCE/ref/wispcraft-26.2.html" \
-  "https://raw.githubusercontent.com/Alastor-Hartfelt/eaglercraft-26.2/main/index.html"
-test "$(wc -c < "$SOURCE/ref/wispcraft-26.2.html")" -gt 1000000
-
-(
-  cd "$SOURCE"
-  python3 -m venv "$WORK/venv"
-  "$WORK/venv/bin/pip" install --disable-pip-version-check Pillow
-  "$WORK/venv/bin/python" gen_textures.py
-  "$WORK/venv/bin/python" build.py
-)
-
-test -s "$SOURCE/dist/web/client/index.html"
-test -s "$SOURCE/dist/web/client/version.txt"
-test -d "$SOURCE/dist/web/client/payload"
-mkdir -p "$SITE/client"
-cp -a "$SOURCE/dist/web/client/." "$SITE/client/"
-echo "Built and staged the Radio Client web files under /client/."
+cp -a "$CLIENT/." "$SITE/client/"
+echo "Staged Radio Client build $(cat "$CLIENT/version.txt") under /client/."
