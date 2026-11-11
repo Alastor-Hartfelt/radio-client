@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#080b14">
-  <title>Rise Client — Launcher</title>
+  <meta name="theme-color" content="#10080b">
+  <title>Radio Client — Launcher</title>
   <style>
     :root { color-scheme: dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; color: #f4f5ff; background: radial-gradient(ellipse at top, #20244c 0%, #0b0d18 55%, #05060a 100%); }
-    main { width: min(100%, 520px); text-align: center; padding: 32px 24px; border: 1px solid #34385c; border-radius: 22px; background: rgba(12, 14, 30, .88); box-shadow: 0 24px 80px #0008; }
-    .logo { font-size: clamp(2.4rem, 10vw, 4rem); font-weight: 900; letter-spacing: .08em; margin: 0; background: linear-gradient(100deg, #9e8cff, #66e7c8); color: transparent; background-clip: text; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; color: #f4f5ff; background: radial-gradient(ellipse at top, #501321 0%, #170b10 55%, #090608 100%); }
+    main { width: min(100%, 520px); text-align: center; padding: 32px 24px; border: 1px solid #51212c; border-radius: 22px; background: rgba(25, 11, 16, .88); box-shadow: 0 24px 80px #0008; }
+    .logo { font-size: clamp(2.4rem, 10vw, 4rem); font-weight: 900; letter-spacing: .08em; margin: 0; background: linear-gradient(100deg, #f3263e, #f2d9ad); color: transparent; background-clip: text; }
     p { color: #c2c5dd; line-height: 1.6; }
-    button { margin-top: 16px; width: 100%; border: 0; border-radius: 12px; padding: 16px 20px; font-size: 1rem; font-weight: 800; color: #080b14; background: linear-gradient(100deg, #a99aff, #72f0d0); cursor: pointer; }
+    button { margin-top: 16px; width: 100%; border: 0; border-radius: 12px; padding: 16px 20px; font-size: 1rem; font-weight: 800; color: #10080b; background: linear-gradient(100deg, #ff8995, #f2d9ad); cursor: pointer; }
     button:focus-visible { outline: 3px solid white; outline-offset: 4px; }
     #status { min-height: 1.5em; font-size: .9rem; }
     .note { font-size: .8rem; color: #969bb9; }
@@ -20,8 +20,8 @@
 </head>
 <body>
   <main>
-    <p class="logo">RISE</p>
-    <h1>Rise Client</h1>
+    <p class="logo">RADIO</p>
+    <h1>Radio Client</h1>
     <p>Launch the client in a new <code>about:blank</code> tab.</p>
     <button id="launch" type="button">Open in about:blank</button>
     <p id="status" role="status" aria-live="polite"></p>
@@ -34,20 +34,20 @@
         document.getElementById("status").textContent = "Pop-up blocked. Allow pop-ups for this site, then try again.";
         return;
       }
-      const clientUrl = new URL("./index.html", window.location.href).href;
+      const clientUrl = new URL("./client/", window.location.href).href;
       try {
         blank.document.open();
         blank.document.write(
           '<!doctype html><html><head><meta charset="utf-8">' +
           '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-          '<title>Rise Client</title></head>' +
+          '<title>Radio Client</title></head>' +
           '<body style="margin:0;width:100%;height:100%;overflow:hidden;background:#000">' +
-          '<iframe title="Rise Client" allow="fullscreen; autoplay; gamepad; clipboard-read; clipboard-write" allowfullscreen ' +
+          '<iframe title="Radio Client" allow="fullscreen; autoplay; gamepad; clipboard-read; clipboard-write" allowfullscreen ' +
           'style="position:fixed;inset:0;width:100%;height:100%;border:0;background:#000" src="' + clientUrl + '"></iframe>' +
           '</body></html>'
         );
         blank.document.close();
-        document.getElementById("status").textContent = "Rise Client opened in a new tab.";
+        document.getElementById("status").textContent = "Radio Client opened in a new tab.";
       } catch (error) {
         document.getElementById("status").textContent = "The browser couldn't open the blank tab. Try opening the client normally.";
       }

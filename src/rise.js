@@ -1,11 +1,8 @@
 /*
  * Radio Client — custom interface layer for Eaglercraft 26.2.
  *
- *  - Radio Video Settings (ShadowNet/Sodium layout, crimson theme) replaces the
- *    game's "Video Settings..." button, and a "Mods" button replaces the title
- *    screen's "Credits" button. Both are pixel-matched overlays that only show
- *    on those screens: Rise reads the finished frame (menu text is matched
- *    against the game's own font) to know which screen is open.
+ *  - Radio settings and mod-menu buttons overlay the native Options, title and
+ *    pause screens. Radio identifies them by matching text in the finished frame.
  *  - Mods: keystrokes, CPS, FPS, crosshair, zoom, fullbright, toggle sprint and
  *    sneak, hitboxes, chunk borders, tick control, quick commands, TNT lag fix,
  *    blueprints, and texture mods (low fire, clear water, no pumpkin blur).
@@ -58,6 +55,7 @@
 	for (var k in DEF_CFG) if (!(k in cfg)) cfg[k] = DEF_CFG[k];
 	if ((cfg._v || 0) < 4) { cfg.chunkCap = false; cfg._v = 4; writeJSON(CFG_KEY, cfg); } // debug flag: off by default now
 	function saveCfg() { writeJSON(CFG_KEY, cfg); }
+	var startupCfg = { chromebook: cfg.chromebook, meshWorkers: cfg.meshWorkers, chunkCap: cfg.chunkCap };
 
 	var DEF_MODS = {
 		keystrokes: false, cps: false, fps: true, crosshair: false, crosshairStyle: 'cross', crosshairColor: '#f2d9ad',
@@ -65,7 +63,7 @@
 		lowFire: false, clearWater: false, noPumpkin: false, entityCull: false, clearLag: false,
 		crosshairSize: 1, fullbrightStrength: 'medium', fpsCorner: 'left', clearLagMinutes: 3, cullDistance: 0.5,
 		skins: {}, shader: false, shaderStyle: 'vibrant', glowOres: false, glint: false, glintColor: 'red', cleanGlass: false,
-		noHurtTilt: false, noFovFx: false, noWobble: false, noLightning: false,
+		noHurtTilt: false, noFovFx: false, noWobble: false, noLightning: false, passwordHider: false,
 		batterySaver: true, batteryCap: lowEnd ? 30 : 0
 	};
 	var mods = readJSON(MODS_KEY) || {};
@@ -90,29 +88,38 @@
 		return { map: map, order: order };
 	}
 	function serialiseOpts(o) { return o.order.map(function (key) { return key + ':' + o.map[key]; }).join('\n') + '\n'; }
-	async function readOptions() {
-		var raw = null;
-		try { raw = localStorage.getItem(OPT_KEY); } catch (e) {}
+	function storedOptions() {
+		try { return localStorage.getItem(OPT_KEY); } catch (e) { return null; }
+	}
+	async function readOptions(raw = storedOptions()) {
 		if (!raw) return { map: {}, order: [] };
 		try { return parseOpts(await gunzip(b64ToBytes(raw))); } catch (e) { return null; }
 	}
-	var guiScaleOpt = 0;
-	var writeQueue = Promise.resolve();
-	function patchOptions(values, edit) {
-		// Serialised: two concurrent read-modify-writes would drop settings.
-		writeQueue = writeQueue.then(async function () {
+	function pendingOptions() {
+		var pending = readJSON(PENDING_KEY) || {};
+		// Ignore legacy Radio GUI Scale edits. The native setting is authoritative.
+		delete pending.guiScale;
+		return pending;
+	}
+	var prebootExpired = false;
+	async function patchOptions(values, edit) {
+		try {
 			var o = await readOptions();
-			if (!o) return;
+			if (!o || prebootExpired) return false;
 			if (!o.order.length) { o.map.version = '4903'; o.order.push('version'); }
 			for (var key in values) {
 				if (!(key in o.map)) o.order.push(key);
 				o.map[key] = values[key];
 			}
 			if (edit) edit(o);
-			guiScaleOpt = parseInt(o.map.guiScale, 10) || 0;
-			localStorage.setItem(OPT_KEY, bytesToB64(await gzip(serialiseOpts(o))));
-		}).catch(function (e) { console.warn('[Rise] options write failed', e); });
-		return writeQueue;
+			var saved = bytesToB64(await gzip(serialiseOpts(o)));
+			if (prebootExpired) return false;
+			localStorage.setItem(OPT_KEY, saved);
+			return true;
+		} catch (e) {
+			console.warn('[Radio] options write failed', e);
+			return false;
+		}
 	}
 
 	var PRESETS = {
@@ -139,6 +146,20 @@
 		}
 	};
 	var ALWAYS = { darkMojangStudiosBackground: 'true' };
+
+	var CAMERA_OPTIONS = {
+		noHurtTilt: ['damageTiltStrength', '0.0', '1.0'],
+		noFovFx: ['fovEffectScale', '0.0', '1.0'],
+		noWobble: ['screenEffectScale', '0.0', '1.0'],
+		noLightning: ['hideLightningFlashes', 'true', 'false']
+	};
+	function cameraOptions(values, changes) {
+		Object.keys(CAMERA_OPTIONS).forEach(function (mod) {
+			if (!(mod in changes)) return;
+			var option = CAMERA_OPTIONS[mod];
+			values[option[0]] = changes[mod] ? option[1] : option[2];
+		});
+	}
 
 	// ------------------------------------------------------------ texture-mod resource packs (worlds DB, like a .minecraft folder)
 	function wantedPacks() {
@@ -171,46 +192,43 @@
 	// one of its ~22,000 resources against every enabled pack while loading, so 30
 	// separate little packs made startup crawl for minutes; one pack costs ~nothing.
 	var ACTIVE = 'rise_active';
-	async function installPacks() {
-		var want = wantedPacks();
-		var stampKey = 'rise.packs.active';
-		var stamp = VERSION + '|' + want.join(',');
-		if (!want.length) {
-			if (readJSON(stampKey) !== stamp) { await clearRisePacks(); writeJSON(stampKey, stamp); }
-			return [];
-		}
-		if (readJSON(stampKey) === stamp) return [ACTIVE];
+	var PACK_STAMP_KEY = 'rise.packs.active';
+	var livePackStamp = null;
+	function packStamp(want) { return VERSION + '|' + (SKINS.revision || '') + '|' + want.join(','); }
+	async function installPacks(want) {
+		var stamp = packStamp(want);
+		if (readJSON(PACK_STAMP_KEY) === stamp) return;
 		var merged = {};
-		want.forEach(function (pid) { var f = PACKS[pid]; for (var rel in f) merged[rel] = f[rel]; }); // later packs win
-		merged['pack.mcmeta'] = btoa(JSON.stringify({ pack: { description: 'Radio Client mods & skins', min_format: 88, max_format: 88, pack_format: 88 } }));
-		await clearRisePacks();
+		want.forEach(function (pid) { var f = PACKS[pid]; for (var rel in f) merged[rel] = f[rel]; });
+		if (want.length) {
+			merged['pack.mcmeta'] = btoa(JSON.stringify({ pack: { description: 'Radio Client mods & skins', min_format: 88, max_format: 88, pack_format: 88 } }));
+		}
 		var db = await openFS();
-		await new Promise(function (res, rej) {
-			var tx = db.transaction('filesystem', 'readwrite');
-			var st = tx.objectStore('filesystem');
-			var dirs = { 'resourcepacks': 1 };
-			Object.keys(merged).forEach(function (rel) {
-				var path = 'resourcepacks/' + ACTIVE + '/' + rel;
-				var parts = path.split('/');
-				for (var i = 1; i < parts.length; i++) dirs[parts.slice(0, i).join('/')] = 1;
-				st.put({ path: path, data: b64ToBytes(merged[rel]).buffer });
+		try {
+			await new Promise(function (res, rej) {
+				var tx = db.transaction('filesystem', 'readwrite');
+				var st = tx.objectStore('filesystem');
+				tx.oncomplete = res;
+				tx.onabort = function () { rej(tx.error || new Error('Radio pack write aborted')); };
+				try {
+					st.delete(IDBKeyRange.bound(['resourcepacks/rise_'], ['resourcepacks/rise_\uffff']));
+					var dirs = {};
+					Object.keys(merged).forEach(function (rel) {
+						var path = 'resourcepacks/' + ACTIVE + '/' + rel;
+						var parts = path.split('/');
+						for (var i = 1; i < parts.length; i++) dirs[parts.slice(0, i).join('/')] = 1;
+						st.put({ path: path, data: b64ToBytes(merged[rel]).buffer });
+					});
+					Object.keys(dirs).forEach(function (d) { st.put({ path: d + '/.eaglerfsdir', data: new ArrayBuffer(0) }); });
+				} catch (e) {
+					tx.abort();
+					rej(e);
+				}
 			});
-			Object.keys(dirs).forEach(function (d) { st.put({ path: d + '/.eaglerfsdir', data: new ArrayBuffer(0) }); });
-			tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
-		});
-		db.close();
-		writeJSON(stampKey, stamp);
-		return [ACTIVE];
-	}
-	// removes every Rise pack folder (old one-pack-per-mod folders included)
-	async function clearRisePacks() {
-		var db = await openFS();
-		await new Promise(function (res, rej) {
-			var tx = db.transaction('filesystem', 'readwrite');
-			tx.objectStore('filesystem')['delete'](IDBKeyRange.bound(['resourcepacks/rise_'], ['resourcepacks/rise_￿']));
-			tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
-		});
-		db.close();
+		} finally {
+			db.close();
+		}
+		writeJSON(PACK_STAMP_KEY, stamp);
 	}
 	function editPackList(o, want) {
 		var cur = [];
@@ -237,31 +255,27 @@
 				cfg.seeded = true; saveCfg();
 			}
 			if ((cfg._v || 0) < 5) { values.inactivityFpsLimit = '"afk"'; cfg._v = 5; saveCfg(); } // battery: slow down when idle
-			var pending = readJSON(PENDING_KEY);
-			if (pending) Object.assign(values, pending);
+			Object.assign(values, pendingOptions());
 			values.toggleSprint = mods.toggleSprint ? 'true' : 'false';
 			values.toggleCrouch = mods.toggleSneak ? 'true' : 'false';
 			if (mods.entityCull) { values.entityDistanceScaling = String(mods.cullDistance); values.entityShadows = 'false'; }
-			values.damageTiltStrength = mods.noHurtTilt ? '0.0' : '1.0';
-			values.fovEffectScale = mods.noFovFx ? '0.0' : '1.0';
-			values.screenEffectScale = mods.noWobble ? '0.0' : '1.0';
-			values.hideLightningFlashes = mods.noLightning ? 'true' : 'false';
+			cameraOptions(values, mods);
 			Object.assign(values, ALWAYS);
-			var want = [];
-			var packsChanged = false;
+			var want = safeMode ? [] : wantedPacks();
+			var packsReady = true;
 			if (!safeMode) {
-				var beforePacks = readJSON('rise.packs.active');
-				try { want = await installPacks(); } catch (e) { console.warn('[Rise] packs', e); }
-				packsChanged = beforePacks !== (readJSON('rise.packs.active') || null);
+				try { await installPacks(want); } catch (e) { packsReady = false; console.warn('[Radio] packs', e); }
 			}
-			await patchOptions(values, function (o) { editPackList(o, want); });
-			if (!safeMode && packsChanged && engine && engine.reloadResources) {
-				engine.reloadResources();
+			var saved = await patchOptions(values, function (o) {
+				if (packsReady) editPackList(o, want.length ? [ACTIVE] : []);
+			});
+			if (saved) {
+				if (packsReady) livePackStamp = packStamp(want);
+				try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
 			}
-			try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
 		})(),
-		sleep(3000) // never hold the game hostage
-	]).catch(function (e) { console.warn('[Rise] preboot', e); });
+		sleep(3000).then(function () { prebootExpired = true; }) // never write after releasing the game
+	]).catch(function (e) { console.warn('[Radio] preboot', e); });
 	// web build: also wait for the downloaded payloads (see web-loader.js)
 	window.__risePreboot = Promise.all([optionsPass, window.__riseBinReady || null]);
 
@@ -334,7 +348,7 @@
 			var r = oDraw.call(this, m, first, count);
 			if (this.__riseDef) {
 				presents++;
-				if (onFrame) { try { onFrame(this); } catch (e) { onFrame = null; console.warn('[Rise] frame', e); } }
+				if (onFrame) { try { onFrame(this); } catch (e) { onFrame = null; console.warn('[Radio] frame', e); } }
 			}
 			return r;
 		};
@@ -350,10 +364,29 @@
 		if (rf) oBind.call(gl, gl.READ_FRAMEBUFFER, rf);
 		return buf;
 	}
-	function calcScale(W, H) {
+	var guiScaleOpt = 0, forceUnicode = false, lastGuiOptions, readingGuiOptions = false;
+	function syncGuiOptions() {
+		if (readingGuiOptions) return;
+		var raw = storedOptions();
+		if (raw === lastGuiOptions) return;
+		lastGuiOptions = raw;
+		readingGuiOptions = true;
+		readOptions(raw).then(function (o) {
+			readingGuiOptions = false;
+			if (!o) return;
+			var scale = parseInt(o.map.guiScale, 10) || 0;
+			var unicode = o.map.forceUnicodeFont === 'true';
+			if (scale === guiScaleOpt && unicode === forceUnicode) return;
+			guiScaleOpt = scale;
+			forceUnicode = unicode;
+			invalidateLayout();
+		});
+	}
+	// Estimate coordinates for Radio overlays only. Minecraft sizes its own GUI.
+	function overlayScale(W, H) {
 		var i = 1;
 		while (i !== guiScaleOpt && i < W && i < H && Math.floor(W / (i + 1)) >= 320 && Math.floor(H / (i + 1)) >= 240) i++;
-		return i;
+		return forceUnicode && i % 2 !== 0 ? i + 1 : i;
 	}
 	// grab a GUI-space rectangle; returns sampler(gx, gy) -> is that GUI pixel white (text)?
 	function grab(gl, s, xg, yg, wg, hg) {
@@ -415,31 +448,41 @@
 
 	// ------------------------------------------------------------ screen watcher
 	var screen = { name: null, s: 1, gw: 0, gh: 0, rects: {} }, layoutCache = {};
-	var lastCheck = 0, boostUntil = 0, pendingCheck = false, lastTitleSeen = 0;
+	var lastCheck = 0, boostUntil = 0, pendingCheck = false;
+	function invalidateLayout() {
+		layoutCache = {}; pendingCheck = true; setScreen(null);
+	}
+	function checkAfterMenuInput() {
+		if (screen.name === 'title') setScreen(null);
+		pendingCheck = true;
+		boostUntil = performance.now() + 2500;
+	}
 	function watcher(gl) {
 		var now = performance.now();
-		// unknown screen (or just changed): look every frame so our buttons land before you can see the game's
-		// Unknown or still-fading screens are checked on every frame, and the check
-		// runs inside the game's own frame, so our button lands in the same frame the
-		// game's button first shows up (the "Credits" label is never visible on its own).
-		var gap = (now < boostUntil || !screen.name || screen.level < 0.97) ? 0 : 160;
-		if (!pendingCheck && now - lastCheck < gap) return;
-		pendingCheck = false; lastCheck = now;
 		if (document.pointerLockElement || isOpen || !gameReady()) { if (screen.name) setScreen(null); return; }
+		// GPU readbacks can stall during menu transitions, so bound their frequency.
+		var gap = pendingCheck ? 32 : (now < boostUntil || (screen.name && screen.level < 0.97)) ? 64 : 160;
+		if (now - lastCheck < gap) return;
+		pendingCheck = false; lastCheck = now;
+		syncGuiOptions();
 		var W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
-		var s = calcScale(W, H), gw = Math.floor(W / s), gh = Math.floor(H / s);
+		if (!W || !H || gl.isContextLost()) return;
+		var s = overlayScale(W, H), gw = Math.ceil(W / s), gh = Math.ceil(H / s);
 		screen.s = s; screen.gw = gw; screen.gh = gh;
 		var key = W + 'x' + H + 's' + s;
 		// 1. header titles, centred at the top
 		var head = grab(gl, s, 0, 0, gw, 60);
-		var titles = ['Options', 'Video Settings', 'Game Menu'];
+		var titles = ['Options', 'Game Menu'];
 		for (var i = 0; i < titles.length; i++) {
 			var t = template(titles[i]);
 			var cx = Math.floor(gw / 2) - Math.floor(t.w / 2);
 			var hit = findText(head, titles[i], cx - 1, cx + 1, 2, titles[i] === 'Game Menu' ? 52 : 36);
 			if (hit) {
-				if (titles[i] === 'Video Settings') { vanillaVideoOpened(); return; }
 				if (titles[i] === 'Game Menu') {
+					if (window.Radio26Options && window.Radio26Options.nativePauseMods) {
+						setScreen('pause', null, hit.level);
+						return;
+					}
 					// in-game Escape menu: a full-width Mods button one row under its last button
 					if (screen.name !== 'pause') delete layoutCache[key + 'pause']; // re-measure each time it opens (Open to LAN etc. shift it)
 					var pr = layoutCache[key + 'pause'];
@@ -450,18 +493,14 @@
 							var tw = template(lbl).w;
 							last = findText(allp, lbl, cxp - Math.floor(tw / 2) - 1, cxp - Math.floor(tw / 2) + 1, hit.y + 20, gh - 20);
 						});
-						pr = layoutCache[key + 'pause'] = last ? { x: cxp - 102, y: last.y - 6 + 24, w: 204, h: 20 } : null;
+						// The pause title can be detected before the last button is readable.
+						// Cache only a measured position so the next frame can retry a miss.
+						if (last) pr = layoutCache[key + 'pause'] = { x: cxp - 102, y: last.y - 6 + 24, w: 204, h: 20 };
 					}
 					setScreen('pause', { mods: pr }, hit.level);
 					return;
 				}
-				var r = layoutCache[key + 'opt'];
-				if (r === undefined) {
-					var all = grab(gl, s, 0, 0, gw, gh);
-					var f = findText(all, 'Video Settings...', Math.floor(gw / 2) - 175, Math.floor(gw / 2) + 20, 40, gh - 30);
-					r = layoutCache[key + 'opt'] = f ? btnRect(f, 150) : null;
-				}
-				setScreen('options', { video: r }, hit.level);
+				setScreen('options', { video: { x: 4, y: 4, w: 120, h: 20 } }, hit.level);
 				return;
 			}
 		}
@@ -469,41 +508,11 @@
 		var foot = grab(gl, s, 0, gh - 30, 140, 30);
 		var tf = findText(foot, 'Rewritten by o_xer', 1, 3, gh - 26, gh - 8);
 		if (tf) {
-			lastTitleSeen = now;
-			// Measure the real menu labels so the artwork's transparent hit areas
-			// can activate the actual Eaglercraft buttons underneath.
-			var allTitle = grab(gl, s, 0, 0, gw, gh);
-			var cxTitle = Math.floor(gw / 2);
-			var titleSpecs = [
-				['Singleplayer'],
-				['Multiplayer'],
-				['Options...', 'Options'],
-				['Quit Game', 'Quit']
-			];
-			var titleActions = titleSpecs.map(function (choices) {
-				var found = null;
-				for (var ci = 0; ci < choices.length && !found; ci++) {
-					found = findText(allTitle, choices[ci], cxTitle - 160, cxTitle + 160,
-						Math.floor(gh * 0.25), Math.floor(gh * 0.92));
-				}
-				return found ? { x: cxTitle - 100, y: found.y - 6, w: 200, h: 20 } : null;
-			});
-			setScreen('title', {
-				mods: { x: Math.floor(gw / 2) + 2, y: Math.floor(gh / 4) + 144, w: 98, h: 20 },
-				titleActions: titleActions
-			}, tf.level);
-			return;
-		}
-		// The title's tiny version credit can fail pixel matching during fades or
-		// scaling. Keep the artwork stable through brief misses instead of flashing.
-		if (screen.name === 'title' && now - lastTitleSeen < 1800) {
-			placeOverlays();
+			setScreen('title', null, tf.level);
 			return;
 		}
 		setScreen(null);
 	}
-	// buttons centre their label: textX = x + (w - textWidth) / 2, textY = y + 6
-	function btnRect(f, w) { return { x: f.x - Math.floor((w - (f.w + 1)) / 2), y: f.y - 6, w: w, h: 20 }; }
 	function setScreen(name, rects, level) {
 		if (name) markBootOk();
 		screen.name = name; screen.rects = rects || {};
@@ -535,7 +544,7 @@
 		var cp = mk('Copy crash report', function () {
 			var rep = readJSON('eaglercraft26.lastCrashReport.v2');
 			var text = (rep && rep.report) || (panel && panel.innerText) || 'no report';
-			text = 'Rise ' + VERSION + ' | mods: ' + JSON.stringify(mods) + ' | cfg: ' + JSON.stringify(cfg) + '\n\n' + text;
+			text = 'Radio Client ' + VERSION + ' | mods: ' + JSON.stringify(mods) + ' | cfg: ' + JSON.stringify(cfg) + '\n\n' + text;
 			(navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { cp.textContent = 'Copied!'; }, function () {
 				var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); cp.textContent = 'Copied!'; } catch (e) {} ta.remove();
 			});
@@ -546,15 +555,6 @@
 		var c = document.querySelector('._eaglercraftX_crash_element');
 		if (c) onGameCrash(c);
 	}).observe(document.documentElement, { childList: true, subtree: true });
-
-	var lastVanilla = 0;
-	function vanillaVideoOpened() {
-		// fallback: the game's own Video Settings opened anyway (keyboard navigation)
-		if (performance.now() - lastVanilla < 1500) return;
-		lastVanilla = performance.now();
-		tapKey('Escape', 'Escape', 27);
-		setTimeout(function () { openPanel('video'); }, 120);
-	}
 
 	// ------------------------------------------------------------ synthetic input (the game accepts it)
 	var synth = 0;
@@ -701,6 +701,7 @@
 		'.scrim.big .sl{width:360px}.scrim.big .sl span{font-size:16px}.scrim.big input[type=range]{width:360px;height:6px}',
 		'.scrim.big .btn.small{height:34px;font-size:16px;padding:0 14px}',
 		'.scrim.big .bar .btn{height:44px;min-width:160px;font-size:20px}',
+		'.scrim.big .bar .hint{font-size:13px;padding:0;max-width:190px;line-height:1.3}',
 		'.scrim.big .grid{grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:14px;padding:6px 18px 20px}',
 		'.scrim.big .tile{padding:16px 8px 12px}.scrim.big .tile .nm{font-size:17px}.scrim.big .tile .gp{font-size:13px}',
 		'.scrim.big .sbar{padding:14px 18px}.scrim.big .sbar input{font-size:18px;width:300px;padding:8px 12px}.scrim.big .chip{font-size:16px;padding:8px 14px}',
@@ -767,8 +768,8 @@
 	(document.head || document.documentElement).appendChild(fontStyle);
 	root.innerHTML = '<style>' + CSS + '</style>' +
 		'<div class="radio-brand" aria-hidden="true"><span class="radio-dial"></span><span class="radio-brand-copy">RADIO CLIENT<small>26.2 · ON AIR</small></span></div>' +
-		'<div class="gbtn mc" data-b="video">Video Settings...</div>' +
-		'<div class="gbtn mc" data-b="mods">Mods</div>' +
+		'<div class="gbtn mc" data-b="video">Radio Video Settings</div>' +
+		'<button type="button" class="gbtn mc" data-b="mods" title="Mod Menu" aria-label="Mod Menu">Mods</button>' +
 		'<div class="hud mc"></div><div class="toast mc"></div>';
 	var radioBrand = root.querySelector('.radio-brand');
 	var btnVideo = root.querySelector('[data-b=video]'), btnMods = root.querySelector('[data-b=mods]');
@@ -810,10 +811,12 @@
 		}
 		radioBrand.style.display = screen.name === 'title' && !isOpen ? 'flex' : 'none';
 		placeBtn(btnVideo, screen.name === 'options' ? screen.rects.video : null);
-		// The Mods button remains available from the in-game pause screen.
-		placeBtn(btnMods, screen.name === 'pause' ? screen.rects.mods : null);
+		// Follow the native profile/language/accessibility row, with its 20px icons and 4px gaps.
+		btnMods.textContent = screen.name === 'title' ? 'M' : 'Mods';
+		placeBtn(btnMods, screen.name === 'title' ? { x: Math.floor(screen.gw / 2) + 38, y: Math.floor(screen.gh / 4) + 96, w: 20, h: 20 } :
+			screen.name === 'pause' ? screen.rects.mods : null);
 	}
-	window.addEventListener('resize', function () { layoutCache = {}; pendingCheck = true; setScreen(null); });
+	window.addEventListener('resize', invalidateLayout);
 
 	// ------------------------------------------------------------ Rise Video Settings (definitions)
 	function num(v) { return parseFloat(String(v).replace(/"/g, '')); }
@@ -827,7 +830,6 @@
 				{ key: 'simulationDistance', label: 'Simulation Distance', type: 'slider', min: 2, max: 32, step: 1, fmt: function (v) { return v + ' chunks'; }, impact: 'High', desc: 'How far the world keeps ticking (redstone, mobs, crops). Lower is much lighter on the world thread and helps with TNT.' },
 				{ key: 'maxFps', label: 'Max Framerate', type: 'slider', min: 10, max: 260, step: 10, fmt: function (v) { return v >= 260 ? 'Unlimited' : v + ' fps'; }, impact: 'Medium', desc: 'On a Chromebook, 60 keeps the CPU cool and leaves room for the world simulation.' },
 				{ key: 'gamma', label: 'Brightness', type: 'slider', min: 0, max: 1, step: 0.05, fmt: function (v) { return v <= 0 ? 'Moody' : v >= 1 ? 'Bright' : Math.round(v * 100) + '%'; }, impact: 'None', desc: 'Lightens dark areas.' },
-				{ key: 'guiScale', label: 'GUI Scale', type: 'cycle', values: [['0', 'Auto'], ['1', '1x'], ['2', '2x'], ['3', '3x'], ['4', '4x']], impact: 'None', desc: 'Size of menus and the HUD.' },
 				{ key: 'enableVsync', label: 'Use VSync', type: BOOL, impact: 'Low', desc: 'Syncs frames to the screen.' },
 				{ key: 'bobView', label: 'View Bobbing', type: BOOL, impact: 'None', desc: 'Camera bob while walking.' },
 				{ key: 'attackIndicator', label: 'Attack Indicator', type: 'cycle', values: [['0', 'Off'], ['1', 'Crosshair'], ['2', 'Hotbar']], impact: 'None', desc: 'Where the attack cooldown is shown.' },
@@ -877,7 +879,7 @@
 				{ key: 'pauseOnLostFocus', label: 'Pause On Lost Focus', type: BOOL, impact: 'None', desc: 'Opens the pause menu when you click away.' },
 				{ key: 'showAutosaveIndicator', label: 'Autosave Indicator', type: BOOL, impact: 'None', desc: 'Icon while the world saves.' },
 				{ key: 'reducedDebugInfo', label: 'Reduced Debug Info', type: BOOL, impact: 'None', desc: 'Hides coordinates on F3.' },
-				{ type: 'reset', label: 'Reset Rise Settings', desc: 'Restores Rise\'s own settings. Worlds and keybinds are untouched.' }
+				{ type: 'reset', label: 'Reset Radio Settings', desc: 'Restores Radio Client\'s own settings. Worlds and keybinds are untouched.' }
 			] }
 		] }
 	];
@@ -907,6 +909,7 @@
 				opt('fullbrightStrength', 'Strength', [['soft', 'Soft'], ['medium', 'Medium'], ['max', 'Max']], 'How bright the dark parts get.')] }),
 			modBool('toggleSprint', 'Toggle Sprint', 'Tap sprint once instead of holding it. Works instantly while you play.'),
 			modBool('toggleSneak', 'Toggle Sneak', 'Tap sneak once instead of holding it. Works instantly while you play.'),
+			modBool('passwordHider', 'Password Hider', 'Shows asterisks after /login in chat. The server still receives the original command.'),
 			cmdRow('Hitboxes', 'Shows the boxes around mobs and items (same as F3+B).', [['Toggle', chord('b', 'KeyB', 66, 'Hitboxes')]]),
 			cmdRow('Chunk Borders', 'Shows the lines between chunks (same as F3+G). Great for redstone and farms.', [['Toggle', chord('g', 'KeyG', 71, 'Chunk borders')]]),
 			{ type: 'blueprint', label: 'Blueprints', desc: 'Pick a build and follow it layer by layer. [ and ] change layer, B hides it.' }
@@ -932,7 +935,7 @@
 					opt('cullDistance', 'Draw Distance', [[0.25, 'Short'], [0.5, 'Medium'], [0.75, 'Long']], 'How far away entities are still drawn.')] })
 			] },
 			{ name: 'THE WORLD (NEEDS CHEATS)', items: [
-				modBool('clearLag', 'Clear Lag', 'Like a server ClearLag plugin: while you play, Rise warns you and then clears all dropped items on a timer. Chat opens for a moment when it runs.', { opts: [
+				modBool('clearLag', 'Clear Lag', 'Like a server ClearLag plugin: while you play, Radio Client warns you and then clears all dropped items on a timer. Chat opens for a moment when it runs.', { opts: [
 					opt('clearLagMinutes', 'Every', [[1, '1 minute'], [3, '3 minutes'], [5, '5 minutes'], [10, '10 minutes']], 'How often dropped items are cleared.')] }),
 				cmdRow('Clear Items Now', 'Removes every dropped item right away.', [['Clear', cmd(['/kill @e[type=minecraft:item]'], 'Clear items')]]),
 				cmdRow('Entity Cramming', 'Mobs squeezed into one block get hurt past this number (normal is 24). Lower thins out crowded mob farms.', [['8', cmd(['/gamerule max_entity_cramming 8'], 'Cramming 8')], ['16', cmd(['/gamerule max_entity_cramming 16'], 'Cramming 16')], ['24', cmd(['/gamerule max_entity_cramming 24'], 'Cramming 24')]]),
@@ -940,7 +943,7 @@
 			] }
 		] },
 		{ id: 'misc', name: 'Misc', groups: [
-			{ name: 'LOOKS (RESTART)', items: [
+			{ name: 'LOOKS', items: [
 				modBool('glint', 'Enchant Glint Colour', 'Changes the shimmer on enchanted items and armour.', { preview: 'glint', opts: [
 					opt('glintColor', 'Colour', [['red', 'Crimson'], ['gold', 'Gold'], ['rainbow', 'Rainbow']], 'Glint colour.')] }),
 				modBool('glowOres', 'Glowing Ores', 'Ore blocks glow at full brightness, so you can spot them in dark caves. They do not light up the area around them.'),
@@ -968,13 +971,19 @@
 	var isOpen = false, scrim = null, which = null, current = null, staged = {}, stagedRise = {}, stagedMods = {}, page = { video: 'general', mods: 'hud' };
 	function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
+	var panelRequest = 0, applying = false;
 	async function openPanel(kind) {
+		if (applying) return;
 		if (isOpen) { if (which === kind) return; closePanel(); }
+		var request = ++panelRequest;
 		isOpen = true; which = kind;
 		placeOverlays();
 		if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) {}
-		current = (await readOptions()) || { map: {}, order: [] };
-		staged = Object.assign({}, readJSON(PENDING_KEY) || {});
+		var options = await readOptions();
+		if (request !== panelRequest) return;
+		current = options || { map: {}, order: [] };
+		staged = pendingOptions();
+		liveApplyFailed = Object.keys(staged).length > 0;
 		stagedRise = {}; stagedMods = {};
 		build();
 		void scrim.offsetWidth; // commit the closed state so the fade-in runs
@@ -982,6 +991,7 @@
 		updateHud();
 	}
 	function closePanel() {
+		panelRequest++;
 		cardEl = null;
 		isOpen = false;
 		if (scrim) {
@@ -1017,41 +1027,136 @@
 			if (['renderClouds', 'particles', 'ao', 'biomeBlendRadius', 'entityShadows', 'cutoutLeaves', 'improvedTransparency', 'mipmapLevels', 'textureFiltering', 'renderDistance', 'simulationDistance'].indexOf(it.key) >= 0) staged.graphicsPreset = q('custom');
 		}
 		refresh();
+		queueAutoApply(it.type === 'slider' ? 180 : 0);
 	}
 	function needsRestart() {
-		// Only true pre-boot engine settings require a full restart.
-		for (var b in stagedRise) {
-			if ((b === 'chromebook' || b === 'meshWorkers' || b === 'chunkCap') &&
-				stagedRise[b] !== cfg[b]) return true;
-		}
-		return false;
+		return Object.keys(startupCfg).some(function (key) {
+			return (key in stagedRise ? stagedRise[key] : cfg[key]) !== startupCfg[key];
+		});
 	}
-	function packStamp() { var s = readJSON('rise.packs.active') || ''; return (s.split('|')[1] || '').split(','); }
-	function commit(restart) {
-		var riseChanged = Object.keys(stagedRise).length > 0;
-		var modsChanged = Object.keys(stagedMods).length > 0;
-		for (var r in stagedRise) cfg[r] = stagedRise[r];
-		for (var m in stagedMods) mods[m] = stagedMods[m];
-		stagedRise = {}; stagedMods = {};
-		saveCfg(); saveMods();
-		if (riseChanged) { dynScale = 1; applyScale(); }
-		if (modsChanged) applyMods();
-		var pend = {};
-		for (var key in staged) {
-			if (staged[key] === current.map[key]) continue;
-			// If the real 26.2 bridge is present, OptionInstance.set() has already
-			// applied this change to the running client. Otherwise retain the old
-			// pre-boot path for the next launch.
-			var live = engine && engine.set && engine.set(key, staged[key]);
-			if (!live) {
-				pend[key] = staged[key];
-			} else if (key === 'guiScale') {
-				guiScaleOpt = parseInt(staged[key], 10) || 0;
-				applyScale();
+	var packQueue = Promise.resolve(), pendingPacks = null, packRunning = false, packReloadFailed = false;
+	function applyLivePacks(want) {
+		if (safeMode || !engine || !engine.canSetResourcePack || !engine.canSetResourcePack()) return false;
+		pendingPacks = want.slice();
+		if (packRunning) return true;
+		packRunning = true;
+		packQueue = packQueue.then(async function () {
+			while (pendingPacks) {
+				var next = pendingPacks, stamp = packStamp(next);
+				pendingPacks = null;
+				if (stamp === livePackStamp && !packReloadFailed) continue;
+				try {
+					await installPacks(next);
+					if (!(await engine.setResourcePack(next.length > 0))) throw new Error('Minecraft declined the pack reload');
+					livePackStamp = stamp; packReloadFailed = false;
+					toast('Texture mods applied');
+				} catch (e) {
+					packReloadFailed = true;
+					if (readJSON(PACK_STAMP_KEY) === stamp) writeJSON(PACK_STAMP_KEY, null);
+					console.warn('[Radio] live pack update failed', e);
+					toast('Texture reload failed. Use Retry to try again.');
+				}
+				refresh();
 			}
+		}).finally(function () { packRunning = false; });
+		return true;
+	}
+	var autoApplyTimer = 0, editRevision = 0, appliedRevision = -1, applyQueue = Promise.resolve(), liveApplyFailed = false;
+	function queueAutoApply(delay) {
+		editRevision++;
+		clearTimeout(autoApplyTimer);
+		autoApplyTimer = setTimeout(function () { autoApplyTimer = 0; applyPanel(false, true); }, delay);
+	}
+	function liveModOptions(values, changes) {
+		cameraOptions(values, changes);
+		if ('toggleSprint' in changes) values.toggleSprint = changes.toggleSprint ? 'true' : 'false';
+		if ('toggleSneak' in changes) values.toggleCrouch = changes.toggleSneak ? 'true' : 'false';
+		if ('entityCull' in changes || ('cullDistance' in changes && mods.entityCull)) {
+			var enabled = 'entityCull' in changes ? changes.entityCull : mods.entityCull;
+			if (enabled) {
+				if (!mods.entityCull) mods._cullRestore = {
+					entityDistanceScaling: engine && engine.get('entityDistanceScaling') || current.map.entityDistanceScaling || '1.0',
+					entityShadows: engine && engine.get('entityShadows') || current.map.entityShadows || 'true'
+				};
+				values.entityDistanceScaling = String('cullDistance' in changes ? changes.cullDistance : mods.cullDistance);
+				values.entityShadows = 'false';
+			} else if (mods.entityCull) Object.assign(values, mods._cullRestore || { entityDistanceScaling: '1.0', entityShadows: 'true' });
 		}
-		if (Object.keys(pend).length) writeJSON(PENDING_KEY, pend);
-		if (restart) { toast('Restarting Radio Client…'); setTimeout(function () { location.reload(); }, 450); }
+	}
+	async function commit() {
+		var restart = Object.keys(stagedRise).some(function (key) { return key in startupCfg && stagedRise[key] !== startupCfg[key]; });
+		var oldDpr = effectiveDpr(), oldPacks = packStamp(wantedPacks());
+		// Snapshot each batch: edits made during an async engine save belong to the next batch.
+		var optionChanges = staged, configChanges = stagedRise, modChanges = stagedMods;
+		staged = {}; stagedRise = {}; stagedMods = {};
+		try {
+			if ('fullbright' in modChanges) modChanges.fullbrightOn = !!modChanges.fullbright;
+			var values = {};
+			for (var key in optionChanges) if (optionChanges[key] !== current.map[key]) values[key] = optionChanges[key];
+			liveModOptions(values, modChanges);
+			var configChanged = Object.keys(configChanges).length > 0;
+			var modsChanged = Object.keys(modChanges).length > 0;
+			Object.assign(cfg, configChanges);
+			Object.assign(mods, modChanges);
+			if (configChanged) {
+				saveCfg();
+				dynScale = 1;
+				if (effectiveDpr() !== oldDpr) applyScale();
+			}
+			if (modsChanged) { saveMods(); applyMods(); }
+			var rejected = engine && engine.apply ? await engine.apply(values) : Object.keys(values);
+			var pending = {};
+			rejected.forEach(function (key) { pending[key] = values[key]; });
+			Object.keys(values).forEach(function (key) {
+				if (key in pending) return;
+				var actual = engine && engine.get ? engine.get(key) : null;
+				current.map[key] = actual == null ? values[key] : String(values[key]).startsWith('"') ? q(actual) : actual;
+			});
+			staged = Object.assign({}, pending, staged);
+			liveApplyFailed = rejected.length > 0;
+			if (Object.keys(staged).length) writeJSON(PENDING_KEY, staged);
+			else try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
+			var want = wantedPacks(), desired = packStamp(want);
+			var packsChanged = desired !== oldPacks || (desired !== livePackStamp && (want.length > 0 || livePackStamp !== null));
+			var packsQueued = packsChanged && applyLivePacks(want);
+			if (restart || rejected.length || (packsChanged && !packsQueued)) {
+				toast('Saved. Some changes take effect next launch.');
+			} else if ('syncChunkWrites' in values) {
+				toast('Saved. Sync Chunk Writes takes effect when you reopen the world.');
+			} else if (packsQueued) {
+				toast('Reloading texture mods…');
+			} else if (Object.keys(values).length || configChanged || modsChanged) {
+				toast('Applied live');
+			}
+		} catch (e) {
+			staged = Object.assign({}, optionChanges, staged);
+			stagedRise = Object.assign({}, configChanges, stagedRise);
+			stagedMods = Object.assign({}, modChanges, stagedMods);
+			throw e;
+		}
+	}
+	function applyPanel(close, automatic) {
+		clearTimeout(autoApplyTimer); autoApplyTimer = 0;
+		var panel = scrim;
+		if (!panel) return Promise.resolve();
+		applyQueue = applyQueue.then(async function () {
+			if (scrim !== panel || (automatic && appliedRevision === editRevision)) return;
+			applying = true;
+			if (!automatic) panel.inert = true;
+			var revision = editRevision;
+			try {
+				await commit(); appliedRevision = revision;
+				if (scrim !== panel) return;
+				if (close) closePanel();
+				else if (automatic) refresh();
+				else renderList();
+			} catch (e) {
+				liveApplyFailed = true;
+				console.warn('[Radio] automatic apply failed', e);
+				toast('Could not apply changes. Use Retry to try again.'); refresh();
+			} finally { panel.inert = false; applying = false; }
+		});
+		return applyQueue;
 	}
 
 	function build() {
@@ -1064,25 +1169,23 @@
 			t.onclick = function () { page[which] = p.id; tabs.querySelectorAll('.tab').forEach(function (x) { x.classList.toggle('on', x === t); }); renderList(); };
 			tabs.appendChild(t);
 		});
-		var note = el('div', 'note', 'Changes are applied live when the 26.2 engine bridge is available; otherwise they take effect on the next launch.');
 		var bar = el('div', 'bar');
-		var undo = el('div', 'btn', 'Undo');
-		var apply = el('div', 'btn', 'Apply');
+		var status = el('div', 'hint', 'Changes save and apply automatically.');
+		var apply = el('div', 'btn', 'Retry');
 		var done = el('div', 'btn', 'Done');
-		undo.onclick = function () { staged = {}; stagedRise = {}; stagedMods = {}; renderList(); toast('Undone'); };
-		apply.onclick = function () { commit(false); toast(engine && engine.available && engine.available() ? 'Applied live' : 'Saved'); };
-		done.onclick = function () { commit(false); closePanel(); };
-		bar.appendChild(undo); bar.appendChild(apply); bar.appendChild(done);
-		scrim.appendChild(tabs); scrim.appendChild(list); scrim.appendChild(info); scrim.appendChild(note); scrim.appendChild(bar);
+		apply.onclick = function () { applyPanel(false); };
+		done.onclick = function () { applyPanel(true); };
+		bar.appendChild(status); bar.appendChild(apply); bar.appendChild(done);
+		scrim.appendChild(tabs); scrim.appendChild(list); scrim.appendChild(info); scrim.appendChild(bar);
 		root.appendChild(scrim);
-		scrim._list = list; scrim._info = info; scrim._note = note; scrim._apply = apply; scrim._defs = defs;
+		scrim._list = list; scrim._info = info; scrim._status = status; scrim._apply = apply; scrim._defs = defs;
 		renderList();
 	}
 	function refresh() {
 		if (!scrim) return;
 		var r = needsRestart();
-		scrim._note.classList.toggle('show', r);
-		scrim._apply.textContent = 'Apply';
+		scrim._status.textContent = r ? 'Worker startup settings apply next launch.' : 'Changes save and apply automatically.';
+		scrim._apply.style.display = liveApplyFailed || packReloadFailed ? '' : 'none';
 		scrim._list.querySelectorAll('.row').forEach(function (row) { if (row._it && (row._it.key || row._it.rise || row._it.mod)) row.classList.toggle('mod', isModified(row._it)); });
 	}
 	function showInfo(it, text) {
@@ -1099,11 +1202,21 @@
 		var list = scrim._list;
 		list.textContent = '';
 		var p = scrim._defs.filter(function (x) { return x.id === page[which]; })[0];
+		var liveSettings = engine && engine.available();
 		if (p.skins) { renderSkins(list); scrim._info.classList.remove('show'); refresh(); return; }
 		list.appendChild(el('div', 'hint', which === 'mods' ? 'Tick a box to turn a mod on. Right-click a mod to see what it does and change its settings.' : 'Right-click an option to see what it does.'));
+		if (which === 'video' && p.id === 'general') {
+			var nativeHint = liveSettings ? 'Change GUI Scale in Minecraft’s Video Settings.'
+				: 'Use Minecraft’s Video Settings to change GUI Scale and Render Distance live on this build.';
+			list.appendChild(el('div', 'hint', nativeHint));
+		}
 		p.groups.forEach(function (g) {
 			list.appendChild(el('div', 'gh', g.name));
-			g.items.forEach(function (it) { list.appendChild(renderRow(it)); });
+			g.items.forEach(function (it) {
+				if (it.key === 'renderDistance' && !liveSettings) return;
+				if (it.mod === 'passwordHider' && !(window.Radio26Options && window.Radio26Options.passwordHider)) return;
+				list.appendChild(renderRow(it));
+			});
 		});
 		scrim._info.classList.remove('show');
 		refresh();
@@ -1160,6 +1273,7 @@
 				else setValue(it, it.step < 1 && String(v).indexOf('.') < 0 ? v.toFixed(1) : String(v));
 				showInfo(it, out.textContent);
 			};
+			r.onchange = function () { queueAutoApply(0); };
 			paint();
 			curText = function () { return out.textContent; };
 			wrap.appendChild(out); wrap.appendChild(r); right.appendChild(wrap);
@@ -1171,7 +1285,7 @@
 					for (var key in vals) staged[key] = vals[key];
 					if (pr[0] === 'chromebook') { stagedRise.chromebook = true; stagedRise.chunkCap = true; stagedRise.hidpi = false; }
 					else { stagedRise.chromebook = false; stagedRise.chunkCap = false; if (pr[0] === 'quality') stagedRise.hidpi = true; }
-					dynScale = 1; renderList(); toast(pr[1] + ' preset ready: press Apply');
+					renderList(); queueAutoApply(0); toast('Applying ' + pr[1] + ' preset…');
 				};
 				right.appendChild(pb);
 			});
@@ -1179,11 +1293,11 @@
 			it.buttons.forEach(function (bt) { var ab = el('div', 'btn small', bt[0]); ab.onclick = bt[1]; right.appendChild(ab); });
 		} else if (it.type === 'blueprint') {
 			var ob = el('div', 'btn small', 'Open');
-			ob.onclick = function () { closePanel(); openBlueprint(); };
+			ob.onclick = function () { applyPanel(true).then(openBlueprint); };
 			right.appendChild(ob);
 		} else if (it.type === 'reset') {
 			var rb = el('div', 'btn small', 'Reset');
-			rb.onclick = function () { var seeded = cfg.seeded; cfg = Object.assign({}, DEF_CFG, { seeded: seeded }); saveCfg(); dynScale = 1; applyScale(); stagedRise = {}; renderList(); toast('Rise settings reset'); };
+			rb.onclick = function () { var seeded = cfg.seeded; cfg = Object.assign({}, DEF_CFG, { seeded: seeded }); saveCfg(); dynScale = 1; applyScale(); stagedRise = {}; renderList(); toast('Radio settings reset'); };
 			right.appendChild(rb);
 		}
 		row.addEventListener('mouseenter', function () { showInfo(it, curText()); });
@@ -1210,7 +1324,7 @@
 	function toggleSkin(s) {
 		var cur = Object.assign({}, curSkins());
 		cur[s.group] = cur[s.group] === s.id ? null : s.id;
-		setValue({ mod: 'skins', restart: true }, cur);
+		setValue({ mod: 'skins' }, cur);
 	}
 	function renderSkins(list) {
 		var bar = el('div', 'sbar');
@@ -1222,7 +1336,7 @@
 			bar.appendChild(ch);
 		});
 		list.appendChild(bar);
-		list.appendChild(el('div', 'hint', 'Click a skin to wear it (one per item), click again to take it off. Right-click for a closer look. Skins only change how things look. Press Apply when you are done.'));
+		list.appendChild(el('div', 'hint', 'Click a skin to wear it (one per item), click again to take it off. Right-click for a closer look. Skins change appearance and reload automatically.'));
 		var grid = el('div', 'grid');
 		list.appendChild(grid);
 		function fill() {
@@ -1265,7 +1379,7 @@
 		wear.onclick = function () { toggleSkin(s); wear.textContent = curSkins()[s.group] === s.id ? 'Take Off' : 'Wear'; if (onChange) onChange(); };
 		done.onclick = function () { closeCard(); };
 		foot.style.gap = '8px'; foot.appendChild(wear); foot.appendChild(done); card.appendChild(foot);
-		card.appendChild(el('div', 'rs', 'Skins are applied when you press Apply.'));
+		card.appendChild(el('div', 'rs', 'Skins reload automatically when you change them.'));
 		bg.appendChild(card);
 		bg.addEventListener('mousedown', function (e) { if (e.target === bg) closeCard(); });
 		bg.addEventListener('contextmenu', function (e) { e.preventDefault(); });
@@ -1357,7 +1471,7 @@
 			add(Object.assign({}, it, { label: it.type === 'actions' ? 'Run' : 'Value' }));
 		}
 		(it.opts || []).forEach(add);
-		if (it.restart || it.key || (it.opts || []).some(function (o) { return o.restart; })) card.appendChild(el('div', 'rs', 'This option is staged until Apply.'));
+		if (it.restart || (it.opts || []).some(function (o) { return o.restart; })) card.appendChild(el('div', 'rs', 'This engine startup option applies on the next launch.'));
 		var foot = el('div', 'foot'), done = el('div', 'btn small', 'Done');
 		done.onclick = function () { closeCard(); };
 		foot.appendChild(done); card.appendChild(foot);
@@ -1466,7 +1580,7 @@
 		if (!BLUEPRINT_SRC) { toast('Blueprints are unavailable in this build'); return; }
 		if (!bpLoaded) {
 			bpLoaded = true;
-			try { (new Function(BLUEPRINT_SRC))(); } catch (e) { console.warn('[Rise] blueprint', e); toast('Blueprints failed to load'); return; }
+			try { (new Function(BLUEPRINT_SRC))(); } catch (e) { console.warn('[Radio] blueprint', e); toast('Blueprints failed to load'); return; }
 		}
 		setTimeout(function () { if (window.__blueprintMod && window.__blueprintMod.open) window.__blueprintMod.open(); }, 50);
 	}
@@ -1504,31 +1618,44 @@
 
 	// ------------------------------------------------------------ input
 	function isRShift(e) { return e.code === 'ShiftRight' || (e.key === 'Shift' && e.location === 2); }
+	function nativeModMenuKeybind() { return !!(window.Radio26Options && window.Radio26Options.modMenuKeybind); }
+	function nativeMenuOwnsShortcut(e) {
+		// Let native input see the binding even if it overlaps a Radio shortcut.
+		var names = { KeyC: 'c', KeyK: 'k', F1: 'f1', F5: 'f5',
+			ControlLeft: 'left.control', ControlRight: 'right.control',
+			ShiftLeft: 'left.shift', ShiftRight: 'right.shift' };
+		return nativeModMenuKeybind() && names[e.code] && engine &&
+			engine.get('radioModMenuKey') === 'key.keyboard.' + names[e.code];
+	}
+	window.addEventListener('radio-open-mod-menu', function () { if (gameReady()) openPanel('mods'); });
 	function codeOf(e) { return e.code || (e.key && e.key.length === 1 ? 'Key' + e.key.toUpperCase() : e.key); }
 	window.addEventListener('keydown', function (e) {
 		if (synth) return;
 		if (isOpen) {
-			if (e.key === 'Escape' || e.code === 'Escape') { if (cardEl) closeCard(); else { commit(false); closePanel(); } e.stopImmediatePropagation(); return; }
+			if (e.key === 'Escape' || e.code === 'Escape') { if (cardEl) closeCard(); else if (scrim) applyPanel(true); else closePanel(); e.stopImmediatePropagation(); return; }
 			var inField = e.composedPath && e.composedPath()[0] && e.composedPath()[0].tagName === 'INPUT';
 			if (!inField) e.stopImmediatePropagation();
 			return;
 		}
-		// Only allow the Right Shift shortcut while the game has pointer lock (actively playing in a world/server).
-		if (isRShift(e) && !e.repeat && gameReady() && document.pointerLockElement) { e.preventDefault(); e.stopImmediatePropagation(); openPanel('mods'); return; }
-		if (!document.pointerLockElement) { pendingCheck = true; boostUntil = performance.now() + 2500; return; }
+		// Older engines retain the default shortcut; rebuilt engines use native Controls.
+		if (!nativeModMenuKeybind() && isRShift(e) && !e.repeat && gameReady() &&
+			(document.pointerLockElement || screen.name === 'title' || screen.name === 'pause')) { e.preventDefault(); e.stopImmediatePropagation(); openPanel('mods'); return; }
+		if (nativeMenuOwnsShortcut(e)) return;
+		if (!document.pointerLockElement) { checkAfterMenuInput(); return; }
 		var c = codeOf(e);
+		if (c === 'Escape' && !e.repeat) checkAfterMenuInput();
 		keysDown[c] = true;
 		if (c === 'F1' && !e.repeat) hideGui = !hideGui;
 		if (c === 'F5' && !e.repeat) persp = (persp + 1) % 3;
 		// Live toggle sprint/sneak. The real 26.2 input system still receives the
 		// synthetic key state, but the user only has to tap the key once.
-		if (mods.toggleSprint && !e.repeat && (c === 'ControlLeft' || c === 'ControlRight')) {
+		if (mods.toggleSprint && !(engine && engine.available()) && !e.repeat && (c === 'ControlLeft' || c === 'ControlRight')) {
 			e.preventDefault(); e.stopImmediatePropagation();
 			toggleSprintHeld = !toggleSprintHeld;
 			keyEvent(toggleSprintHeld ? 'keydown' : 'keyup', 'Control', c, 17);
 			return;
 		}
-		if (mods.toggleSneak && !e.repeat && (c === 'ShiftLeft' || c === 'ShiftRight')) {
+		if (mods.toggleSneak && !(engine && engine.available()) && !e.repeat && (c === 'ShiftLeft' || c === 'ShiftRight')) {
 			e.preventDefault(); e.stopImmediatePropagation();
 			toggleSneakHeld = !toggleSneakHeld;
 			keyEvent(toggleSneakHeld ? 'keydown' : 'keyup', 'Shift', c, 16);
@@ -1547,13 +1674,11 @@
 	}, true);
 	window.addEventListener('keyup', function (e) {
 		if (synth) return;
-		if (isOpen || isRShift(e)) {
-			var inField = e.composedPath && e.composedPath()[0] && e.composedPath()[0].tagName === 'INPUT';
-			if (!inField) e.stopImmediatePropagation();
-			return;
-		}
 		var c = codeOf(e);
 		delete keysDown[c];
+		// Native input still needs key releases while the HTML menu is open.
+		// This also prevents movement/modifier keys used as the menu binding from sticking.
+		if (isOpen || (!nativeModMenuKeybind() && isRShift(e))) return;
 		if (c === 'KeyC' && zooming) { zooming = false; applyFrameEffects(); e.stopImmediatePropagation(); }
 	}, true);
 	window.addEventListener('wheel', function (e) {
@@ -1569,11 +1694,12 @@
 			if (e.button === 0) clicksL.push(performance.now());
 			if (e.button === 2) clicksR.push(performance.now());
 		} else if (!isOpen && e.composedPath().indexOf(host) < 0) {
-			// a click in a menu may change screen: check every frame for a while
-			// (the watcher runs inside the game's frame, so buttons never lag behind)
-			pendingCheck = true; boostUntil = performance.now() + 2500;
+			checkAfterMenuInput();
 		}
 	}, true);
+	window.addEventListener('touchstart', function (e) {
+		if (!isOpen && screen.name === 'title' && e.composedPath().indexOf(host) < 0) checkAfterMenuInput();
+	}, { capture: true, passive: true });
 	window.addEventListener('mouseup', function (e) { delete keysDown['M' + e.button]; pendingCheck = true; }, true);
 	document.addEventListener('pointerlockchange', function () {
 		keysDown = {};

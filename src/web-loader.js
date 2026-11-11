@@ -34,7 +34,7 @@
 			var r = await reader.read();
 			if (r.done) break;
 			parts.push(r.value); got += r.value.length; done += r.value.length;
-			status('Downloading Radio Client… ' + mb(done) + ' / ' + mb(total) + ' MB');
+			status('Downloading Radio Client... ' + mb(done) + ' / ' + mb(total) + ' MB');
 		}
 		var out = new Uint8Array(len && len === got ? len : got), o = 0;
 		for (var i = 0; i < parts.length; i++) { out.set(parts[i], o); o += parts[i].length; }
@@ -108,7 +108,7 @@
 		cacheP = openCache();
 		var cache = await cacheP;
 		var hits = await Promise.all(IDS.map(function (id) { return load(id, cache); }));
-		status(hits.every(Boolean) ? 'Starting Radio Client (cached)…' : 'Starting Radio Client…');
+		status(hits.every(Boolean) ? 'Starting Radio Client (cached)...' : 'Starting Radio Client...');
 	})();
 	window.__riseBinReady.catch(function (e) {
 		status('Download failed: ' + e.message + ' — check your connection and reload.');

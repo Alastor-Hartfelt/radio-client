@@ -59,7 +59,7 @@ def trim_unifont(zbytes):
                 keep = [line for line in data.decode('ascii').splitlines()
                         if any(a <= int(line.split(':', 1)[0], 16) < b for a, b in UNIFONT_KEEP)]
                 data = ('\n'.join(keep) + '\n').encode('ascii')
-            dst.writestr(info.filename, data)
+            dst.writestr(zipfile.ZipInfo(info.filename), data, compress_type=zipfile.ZIP_DEFLATED)
     return out.getvalue()
 
 
@@ -210,7 +210,15 @@ def data_uri_image(path):
 
 
 def main():
-    html = open(BASE, 'r', encoding='utf-8').read()
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--base', default=BASE, help='standalone Eaglercraft 26.2 HTML input')
+    args = parser.parse_args()
+    html = open(args.base, 'r', encoding='utf-8').read()
+    # Browsers only scan the first 1024 bytes for a charset declaration.
+    # The base document places large inline scripts before its metadata.
+    html = re.sub(r'<meta\s+charset=["\']UTF-8["\']\s*/?>', '', html, count=1, flags=re.I)
+    html = html.replace('<head>', '<head>\n<meta charset="utf-8">', 1)
 
     # 1. assets payload
     m = re.search(r'(<script type="application/octet-stream" id="eag-inline-assets" data-size=")(\d+)(">)(.*?)(</script>)', html, re.S)
@@ -259,7 +267,7 @@ def main():
     html = html.replace(anchor, '<script type="text/javascript">\n' + engine_bridge + '\n</script>\n<script type="text/javascript">\n' + rise + '\n</script>\n\t' + anchor)
 
     # 4. Radio branding: title, favicon, and the RADIO wordmark on the black loading stage.
-    html = html.replace('<title>Eaglercraft 26.2 0.6-dev</title>', '<title>Radio Client</title>', 1)
+    html = re.sub(r'<title>Eaglercraft 26\.2[^<]*</title>', '<title>Radio Client</title>', html, count=1)
     icon = data_uri_png(os.path.join(ROOT, 'theme_extra', 'icon.png'))
     # Accept an icon link regardless of attribute order, quote style, or whether
     # the source icon is inline or a URL. Replace only the first favicon link.
@@ -298,7 +306,7 @@ WASM_FETCH = r'''  (function () {
 WORKER_ASSETS = ('\t\t\t\t\tif (window.__riseAssetBlobURL && typeof window.__eaglerWasmServerWorkerBootstrapURL === "string") {'
                  ' try { const rob = await (await fetch(window.__eaglerWasmServerWorkerBootstrapURL)).blob();'
                  ' window.__eaglerWasmServerWorkerBootstrapURL = URL.createObjectURL(new Blob(["self.__riseAssetURL=" + JSON.stringify(window.__riseAssetBlobURL) + ";\\n", rob], { type: "text/javascript" }));'
-                 ' } catch (e) { window.__log.push("W:[Rise] worker asset blob: " + e); } }\n')
+                 ' } catch (e) { window.__log.push("W:[Radio] worker asset blob: " + e); } }\n')
 
 
 def make_web(html, version):
@@ -343,13 +351,13 @@ def make_web(html, version):
     html = html.replace('serverAssetNode ? serverAssetNode.textContent : ""', '""', 1)
     a = 'if (assetBuffer) return assetBuffer;\\n'
     assert html.count(a) == 1
-    html = html.replace(a, a + "    if (self.__riseAssetURL) { var rx = new OriginalXHR(); rx.open('GET', self.__riseAssetURL, false); rx.responseType = 'arraybuffer'; rx.send(); if (rx.status !== 200) throw new Error('Rise: asset download failed ' + rx.status); assetBuffer = rx.response; encoded = ''; return assetBuffer; }\\n")
+    html = html.replace(a, a + "    if (self.__riseAssetURL) { var rx = new OriginalXHR(); rx.open('GET', self.__riseAssetURL, false); rx.responseType = 'arraybuffer'; rx.send(); if (rx.status !== 200) throw new Error('Radio: asset download failed ' + rx.status); assetBuffer = rx.response; encoded = ''; return assetBuffer; }\\n")
 
     loader = open(os.path.join(ROOT, 'src', 'web-loader.js'), encoding='utf-8').read()
     loader = loader.replace('%VERSION%', version).replace('%IDS%', repr(ids).replace("'", '"')).replace('%TOTAL%', str(total)).replace('%SIZES%', json.dumps(sizes))
-    head = '<head>'
-    i = html.index(head) + len(head)
-    html = html[:i] + '<script type="text/javascript">\n' + loader + '\n</script>' + html[i:]
+    charset = '<meta charset="utf-8">'
+    i = html.index(charset) + len(charset)
+    html = html[:i] + '\n<script type="text/javascript">\n' + loader + '\n</script>' + html[i:]
     open(os.path.join(WEB, 'index.html'), 'w', encoding='utf-8').write(html)
     open(os.path.join(WEB, 'version.txt'), 'w').write(version)
     print('web build: index.html %.1f MB + %d payloads %.1f MB' % (

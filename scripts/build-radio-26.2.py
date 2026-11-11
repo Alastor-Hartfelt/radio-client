@@ -160,11 +160,8 @@ def main() -> None:
         ]
     run(build)
 
-    ref = ROOT / "ref" / "wispcraft-26.2.html"
-    ref.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(standalone, ref)
-    print(f"\n[Radio build] 26.2 engine ready: {ref}")
-    run([sys.executable, str(ROOT / "build.py")], cwd=ROOT)
+    print(f"\n[Radio build] 26.2 engine ready: {standalone}")
+    run([sys.executable, str(ROOT / "build.py"), "--base", str(standalone)], cwd=ROOT)
 
     if not args.keep_workspace:
         shutil.rmtree(workspace)

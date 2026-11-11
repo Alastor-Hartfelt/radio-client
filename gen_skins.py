@@ -7,7 +7,7 @@ nothing about gameplay changes. Output: theme_extra/skins.json
 
 Run: .venv/bin/python gen_skins.py
 """
-import base64, colorsys, io, json, math, os, random, sys
+import base64, colorsys, hashlib, io, json, math, os, random, sys
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -321,13 +321,11 @@ def shield_skin(A, paint):
     return {'entity/shield/shield_base_nopattern': src}
 
 
-def rise_face(f):
-    rect(f, 0, 0, 11, 21, '#0b5f8e')
-    for y in range(22):
-        for x in range(12):
-            if (x + y) % 7 == 0:
-                dot(f, x, y, '#0e6fa4')
-    draw(['1111111.', '1.....11', '1......1', '1.....11', '1111111.', '1...11..', '1....11.', '1.....11'], {'1': '#40f0dc'}, f, 2, 7)
+def radio_face(f):
+    rect(f, 0, 0, 11, 21, '#200b10')
+    logo = Image.open(os.path.join(ROOT, 'theme_extra', 'icon.png')).convert('RGBA')
+    logo.thumbnail((12, 12), Image.Resampling.LANCZOS)
+    f.alpha_composite(logo, ((f.width - logo.width) // 2, (f.height - logo.height) // 2))
 
 
 def creeper_face(f):
@@ -674,7 +672,8 @@ def build(A):
     add('ender_bow', 'Ender Bow', 'bow', 'Weapons', 'A dark purple ender bow.', bow_skin(A, hue=0.78, sat=0.7))
     add('neon_bow', 'Neon Bow', 'bow', 'Weapons', 'A bow that cycles through neon colours.', neon_bow(A))
 
-    add('rise_shield', 'Rise Shield', 'shield', 'Weapons', 'An ocean-blue shield with the Rise R.', shield_skin(A, rise_face))
+    # Keep the legacy ID so existing shield selections receive the replacement.
+    add('rise_shield', 'Radio Shield', 'shield', 'Weapons', 'A dark crimson shield with the Radio Client logo.', shield_skin(A, radio_face))
     add('creeper_shield', 'Creeper Shield', 'shield', 'Weapons', 'A creeper face shield.', shield_skin(A, creeper_face))
     add('ocean_shield', 'Wave Shield', 'shield', 'Weapons', 'Turquoise waves.', shield_skin(A, ocean_face))
     add('ender_shield', 'Ender Eye Shield', 'shield', 'Weapons', 'A watching ender eye.', shield_skin(A, ender_face))
@@ -769,7 +768,8 @@ def main():
                      'cat': cat, 'desc': desc, 'anim': frames > 1, 'frames': frames,
                      'img': base64.b64encode(png(preview)).decode(), 'tints': tints})
     out = os.path.join(ROOT, 'theme_extra', 'skins.json')
-    json.dump({'packs': packs, 'list': meta}, open(out, 'w'), separators=(',', ':'))
+    revision = hashlib.sha256(json.dumps(packs, sort_keys=True, separators=(',', ':')).encode()).hexdigest()[:16]
+    json.dump({'packs': packs, 'list': meta, 'revision': revision}, open(out, 'w'), separators=(',', ':'))
     print('%d skins, %d animated, %d KB' % (len(meta), sum(m['anim'] for m in meta), os.path.getsize(out) // 1024))
 
 

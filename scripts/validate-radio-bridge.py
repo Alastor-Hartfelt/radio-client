@@ -22,7 +22,8 @@ OPTION_METHODS = [
     "menuBackgroundBlurriness", "mipmapLevels", "biomeBlendRadius",
     "rawMouseInput", "showAutosaveIndicator", "reducedDebugInfo",
     "damageTiltStrength", "fovEffectScale", "screenEffectScale",
-    "hideLightningFlash",
+    "hideLightningFlash", "chunkSectionFadeInTime", "entityDistanceScaling",
+    "prioritizeChunkUpdates", "graphicsPreset",
 ]
 
 def javap(jar: Path, cls: str) -> str:
@@ -71,7 +72,7 @@ def main() -> None:
         if generated.count("RadioOptionsBridge.install();") != 1:
             raise SystemExit("Generated Minecraft.java contains duplicate bridge hookups")
 
-    if "globalThis.Radio26Options" not in bridge or "javaMethods.get" not in bridge:
+    if "globalThis.Radio26Options" not in bridge or "@JSFunctor" not in bridge:
         raise SystemExit("RadioOptionsBridge is missing its TeaVM browser seam")
 
     print("Radio 26.2 bridge validation passed.")
