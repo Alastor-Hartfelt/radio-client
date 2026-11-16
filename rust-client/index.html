@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Radio Client — Rust prototype</title></head>
+<body style="background:#111827;color:#f9fafb;font-family:system-ui;padding:2rem">
+<h1>Radio Client — Rust prototype</h1>
+<p id="status">Loading Rust/WebAssembly…</p>
+<script type="module">
+import init from "./pkg/radio_rust_web.js";
+init().catch(err => { document.getElementById("status").textContent = "WASM initialization failed: " + err; });
+</script>
+</body></html>
