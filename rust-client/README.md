@@ -1,37 +1,35 @@
-# Radio Client — Minecraft Java 1.21.11 Rust/WebAssembly rewrite
+# Radio Client — Minecraft 26.2 Rust/WebAssembly experiment
 
-**Target Minecraft version: Java Edition 1.21.11.**
+**Target: existing Radio Client / Eaglercraft Minecraft 26.2.** Minecraft Java 1.21.11 is a separate project.
 
-This branch is an experimental independent Rust/WASM rewrite. The current code is a browser initialization scaffold **only**; it is not yet a Minecraft renderer, playable game, or working multiplayer client.
+This branch is an experimental Rust/WASM rewrite of Radio Client. The current code is a browser initialization scaffold only: **not a playable Minecraft client**.
 
-## Architecture decision
+## Architecture
 
-- Rust compiled to WebAssembly for game state, protocol handling, simulation and client logic.
-- Browser JavaScript glue only where required for DOM, input, graphics and WebSocket APIs.
-- Start with WebGL2 for wider browser compatibility; consider WebGPU as an optional future backend.
-- Implement the Minecraft Java 1.21.11 protocol, not the older 1.12.2 or 26.2 protocols.
-- Browser WebSocket connections require a compatible WebSocket-to-Minecraft gateway/proxy; browsers cannot directly open raw Minecraft TCP sockets.
-- Keep the existing Java-based Radio Client untouched on its original branch.
-- Reuse third-party crates only after checking version compatibility and licenses; do not assume Android-native Starling code works in browsers.
+- Preserve the existing Radio Client 26.2 behavior and branding as the compatibility target.
+- Rust compiled to WebAssembly for suitable game logic, state, and rendering support.
+- Use browser APIs for input, graphics and WebSocket networking.
+- Prefer incremental reuse and porting over an unsupported claim that the full Minecraft Java game can be rewritten quickly.
+- Keep original `radio-client` branch untouched.
+- Do not assume existing Eaglercraft protocol compatibility without implementing and testing it.
 
-## Build locally
+## Build scaffold
 
-Install Rust and wasm-pack:
+Install Rust and wasm-pack, then run from `rust-client`:
 
 ```sh
-cd rust-client
 wasm-pack build --target web --release
 python3 -m http.server 8080
 ```
 
-Open http://localhost:8080/rust-client/ from the repository root.
+Open http://localhost:8080/ if serving from `rust-client`.
 
-## Development milestones
+## Milestones
 
-1. CI builds and smoke-tests the browser WASM scaffold.
-2. WebGL2 renderer, input and asset-loading foundations.
-3. Protocol 1.21.11 codec, packet framing, compression, login/configuration/play state machine, and WebSocket gateway support.
-4. Chunk decoding and rendering, player controls, physics, entities, inventory and GUI.
-5. Connect to an authorized 1.21.11 test server; verify actual gameplay and performance.
+1. Compile and browser-test Rust/WASM scaffold.
+2. Add graphics, input, and asset loading.
+3. Investigate reusable Radio Client 26.2 systems and browser-compatible multiplayer networking.
+4. Implement or port rendering, world handling, controls and game systems.
+5. Validate actual 26.2 gameplay and server connectivity.
 
-Do not claim multiplayer support or browser playability until these milestones are implemented and tested.
+**Status:** Scaffold committed, not yet compiled or browser-tested, no gameplay implemented.
